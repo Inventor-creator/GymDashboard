@@ -1,12 +1,13 @@
-import "./App.css";
+import { Routes, Route } from "react-router-dom";
+import { Dashboard } from "./pages/Dashboard";
+import { LoginPage } from "./pages/LoginPage";
 
 function App() {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <p className="text-4xl font-bold text-blue-600">
-                Tailwind is working!
-            </p>
-        </div>
+        <Routes>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/login" element={<LoginPage />} />
+        </Routes>
     );
 }
 
