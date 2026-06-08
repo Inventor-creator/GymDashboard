@@ -7,8 +7,10 @@ class UserCreate(UserBase):
     password: str
 
 class User(UserBase):
+
+    model_config = {
+        "from_attributes": True
+    }
+
     id: int
     is_active: bool
-
-    class Config:
-        from_attributes = True

@@ -4,17 +4,10 @@ export function LoginPage() {
     const navigate = useNavigate();
 
     const handleGoogleLogin = () => {
-        // Logic for Google OAuth will go here
-        console.log("Redirecting to Google Login...");
-        // After successful login, we would navigate to the dashboard
-        // For now, let's just simulate it
-
-        //get backend "/login"
-        api.get("")
-            .then((response) => {})
-            .catch((error) => {
-                console.error("Error:", error);
-            });
+        // Redirect to backend OAuth login endpoint
+        const backendUrl =
+            import.meta.env.VITE_API_URL || "http://localhost:8080";
+        window.location.href = `${backendUrl}/auth/login`;
     };
 
     return (
