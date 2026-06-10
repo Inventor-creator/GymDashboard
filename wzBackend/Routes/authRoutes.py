@@ -56,11 +56,9 @@ async def auth_callback(request: Request, db: Session = Depends(database.get_db)
 
         # Store user info in session
         request.session['user'] = {
-            "email": user.email,
-            "name": user.full_name,
-            "picture": user.picture,
             "id": user.id
         }
+
 
         return RedirectResponse(url=f"{frontend_url}/dashboard")
 

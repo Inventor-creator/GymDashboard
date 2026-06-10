@@ -15,7 +15,14 @@ models.Base.metadata.create_all(bind=database.engine)
 app = FastAPI(title="WorkoutZone Backend")
 
 # Add Session Middleware
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY") or "")
+app.add_middleware(SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY") or "",
+    session_cookie="secure_session",
+    max_age=3600,             # Expire sessions quickly (e.g., 1 hour)
+    same_site="lax",          # Protects against Cross-Site Request Forgery (CSRF)
+    https_only=False,          # Prevents interception via Man-in-the-Middle (MitM) over HTTP
+    domain=None,
+)
 
 # Add CORS Middleware
 app.add_middleware(
