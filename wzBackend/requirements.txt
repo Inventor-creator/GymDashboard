@@ -7,3 +7,4 @@ python-dotenv
 authlib
 httpx
 email-validator
+pydantic

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from models import models, database
+from database import models, get_db
+
 import os
 from dotenv import load_dotenv
 from authService import oauth
@@ -18,12 +19,12 @@ async def login(request: Request):
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @router.get('/callback')
-async def auth_callback(request: Request, db: Session = Depends(database.get_db)):
+async def auth_callback(request: Request, db: Session = Depends(get_db)):
     try:
         token = await oauth.google.authorize_access_token(request)
     except Exception as e:
         print(f"Auth error: {e}")
-        return RedirectResponse(url=f"{frontend_url}/login?error=auth_failed")
+        return RedirectResponse(url=f"{frontend_url}/login/error?error=auth_failed")
 
     user_info = token.get('userinfo')
     if user_info:
@@ -38,13 +39,12 @@ async def auth_callback(request: Request, db: Session = Depends(database.get_db)
         ).first()
 
         if not user:
-            user = models.User(
-                email=email,
-                google_id=google_id,
-                full_name=name,
-                picture=picture
-            )
-            db.add(user)
+            #check for admin
+            admin = db.query(models.Admin).filter(models.Admin.email == email).first()
+            if admin:
+                user = admin
+            else:
+                return RedirectResponse(url=f"{frontend_url}/login/error?error=userNotFound")
         else:
             # Update user info if it changed
             user.google_id = google_id
@@ -56,13 +56,15 @@ async def auth_callback(request: Request, db: Session = Depends(database.get_db)
 
         # Store user info in session
         request.session['user'] = {
-            "id": user.id
+            "id": user.id if type(user) is models.User else user.admin_id,
+            "email": user.email,
+            "name": user.full_name.split()[0] if user.full_name != None else "not Set" ,
         }
 
 
         return RedirectResponse(url=f"{frontend_url}/dashboard")
 
-    return RedirectResponse(url=f"{frontend_url}/login?error=no_user_info")
+    return RedirectResponse(url=f"{frontend_url}/login/error?error=no_user_info")
 
 @router.get('/logout')
 async def logout(request: Request):
@@ -75,3 +77,12 @@ async def get_me(request: Request):
     if user:
         return user
     raise HTTPException(status_code=401, detail="Not authenticated")
+
+@router.get('/users')
+async def get_users(request: Request, db: Session = Depends(get_db)):
+    user = request.session.get('user')
+    if not user or user.get("email") != "aryaupatil9@gmail.com":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    users = db.query(models.User).all()
+    return [{"id": u.id, "email": u.email, "name": u.full_name} for u in users]

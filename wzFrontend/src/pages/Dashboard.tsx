@@ -1,4 +1,5 @@
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { FinanceView } from "../components/FinanceView";
 import { MemberListView } from "../components/MemberListView";
@@ -6,6 +7,19 @@ import { AnalyticsView } from "../components/AnalyticsView";
 
 export const Dashboard: FC = () => {
     const [view, setView] = useState("finances");
+    const [activeGymId, setActiveGymId] = useState<number | null>(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const gymId = localStorage.getItem("activeGymId");
+        if (!gymId) {
+            navigate("/select-gym");
+        } else {
+            setActiveGymId(parseInt(gymId));
+        }
+    }, [navigate]);
+
+    if (!activeGymId) return null;
 
     return (
         <div className="flex min-h-screen">
@@ -18,6 +32,12 @@ export const Dashboard: FC = () => {
                         {view === "analytics" && "Revenue Analytics"}
                     </div>
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate("/select-gym")}
+                            className="text-[12px] text-brand-accent hover:underline"
+                        >
+                            Switch Gym
+                        </button>
                         <div className="mono text-[12px] text-brand-muted">
                             June 06, 2026
                         </div>
@@ -26,7 +46,7 @@ export const Dashboard: FC = () => {
                 </header>
 
                 {view === "finances" && <FinanceView />}
-                {view === "members" && <MemberListView />}
+                {view === "members" && <MemberListView gymId={activeGymId} />}
                 {view === "analytics" && <AnalyticsView />}
             </main>
         </div>

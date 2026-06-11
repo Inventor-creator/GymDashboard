@@ -23,15 +23,15 @@ export const AnalyticsView: FC = () => {
                     <div className="mt-4">
                         <div className="flex justify-between mb-2">
                             <span>Monthly Memberships</span>
-                            <span className="mono">$8,200</span>
+                            <span className="mono">₹8,200</span>
                         </div>
                         <div className="flex justify-between mb-2">
                             <span>Personal Training</span>
-                            <span className="mono">$3,400</span>
+                            <span className="mono">₹3,400</span>
                         </div>
                         <div className="flex justify-between">
                             <span>Supplement Sales</span>
-                            <span className="mono">$850</span>
+                            <span className="mono">₹850</span>
                         </div>
                     </div>
                 </div>

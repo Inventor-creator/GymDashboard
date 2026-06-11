@@ -1,16 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from models import models, database
+from database import models , engine
 from authlib.integrations.starlette_client import OAuth
 import os
 from Routes.authRoutes import router as auth_router
+from Routes.memberRoutes import router as member_router
+from Routes.userRoutes import router as user_router
+from Routes.gymRoutes import router as gym_router
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Create tables (In production, use Alembic)
-models.Base.metadata.create_all(bind=database.engine)
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="WorkoutZone Backend")
 
@@ -35,6 +38,10 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(auth_router)
+app.include_router(member_router)
+app.include_router(gym_router)
+app.include_router(user_router)
+
 
 @app.get("/")
 def read_root():

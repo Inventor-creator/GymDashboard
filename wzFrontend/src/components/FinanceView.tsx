@@ -62,7 +62,7 @@ export const FinanceView: FC = () => {
                         Total Income (YTD)
                     </div>
                     <div className="text-[28px] font-bold mb-1 mono">
-                        ${DATA.finances.totalIncome.toLocaleString()}
+                        ₹{DATA.finances.totalIncome.toLocaleString()}
                     </div>
                     <div className="text-[12px] flex items-center gap-1 text-trend-up">
                         ↑ {DATA.finances.monthlyGrowth}% from last month
@@ -73,7 +73,7 @@ export const FinanceView: FC = () => {
                         Active MRR
                     </div>
                     <div className="text-[28px] font-bold mb-1 mono">
-                        $12,450.00
+                        ₹12,450.00
                     </div>
                     <div className="text-[12px] flex items-center gap-1 text-trend-up">
                         ↑ 4.2%
@@ -84,7 +84,7 @@ export const FinanceView: FC = () => {
                         Average LTV
                     </div>
                     <div className="text-[28px] font-bold mb-1 mono">
-                        $1,840.00
+                        ₹1,840.00
                     </div>
                     <div className="text-[12px] flex items-center gap-1 text-trend-down">
                         ↓ 1.2%
@@ -132,7 +132,7 @@ export const FinanceView: FC = () => {
                                     {tx.date}
                                 </td>
                                 <td className="p-4 border-b border-brand-border mono font-semibold">
-                                    ${tx.amount.toFixed(2)}
+                                    ₹{tx.amount.toFixed(2)}
                                 </td>
                                 <td className="p-4 border-b border-brand-border">
                                     <span
