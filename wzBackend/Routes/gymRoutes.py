@@ -22,7 +22,8 @@ def check_admin(user = Depends(get_current_user)):
 
 @router.get("/my", response_model=List[GymResponse])
 def get_my_gyms(db: Session = Depends(get_db), user = Depends(get_current_user)):
-    gyms = db.query(Gym).filter(Gym.owner_id == user["id"]).all()
+    gyms = db.query(Gym).join(User).filter(User.email == user["email"]).all()
+
     return gyms
 
 @router.get("/", response_model=List[GymResponse])

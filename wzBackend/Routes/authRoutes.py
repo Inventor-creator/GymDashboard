@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import models, get_db
+import schemas.UserSchemas
 
 import os
 from dotenv import load_dotenv
@@ -55,14 +56,15 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
         db.refresh(user)
 
         # Store user info in session
+        user_id = user.id if hasattr(user, 'id') else user.admin_id
         request.session['user'] = {
-            "id": user.id if type(user) is models.User else user.admin_id,
+            "id": user_id,
             "email": user.email,
-            "name": user.full_name.split()[0] if user.full_name != None else "not Set" ,
+            "name": (user.full_name or "User").split()[0],
         }
 
 
-        return RedirectResponse(url=f"{frontend_url}/dashboard")
+        return RedirectResponse(url=f"{frontend_url}/select-gym")
 
     return RedirectResponse(url=f"{frontend_url}/login/error?error=no_user_info")
 
@@ -86,3 +88,19 @@ async def get_users(request: Request, db: Session = Depends(get_db)):
 
     users = db.query(models.User).all()
     return [{"id": u.id, "email": u.email, "name": u.full_name} for u in users]
+
+@router.post('/users')
+async def create_user(user_data: schemas.UserSchemas.UserCreate, request: Request, db: Session = Depends(get_db)):
+    user = request.session.get('user')
+    if not user or user.get("email") != "aryaupatil9@gmail.com":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_user = db.query(models.User).filter(models.User.email == user_data.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="User already exists")
+
+    new_user = models.User(email=user_data.email, full_name=user_data.full_name)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"id": new_user.id, "email": new_user.email, "name": new_user.full_name}

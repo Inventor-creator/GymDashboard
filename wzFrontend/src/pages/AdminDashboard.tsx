@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 
@@ -24,20 +24,24 @@ export const AdminDashboard: FC = () => {
         gym_location: "",
         owner_id: 0,
     });
+    const [newUser, setNewUser] = useState({
+        email: "",
+        full_name: "",
+    });
     const navigate = useNavigate();
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const [gymsRes, usersRes] = await Promise.all([
                 api.get("/gyms/"),
-                api.get("/users"),
+                api.get("/auth/users"),
             ]);
             setGyms(gymsRes.data);
             setUsers(usersRes.data);
             if (usersRes.data.length > 0) {
                 setNewGym((prev) => ({
                     ...prev,
-                    owner_id: usersRes.data[0].id,
+                    owner_id: prev.owner_id || usersRes.data[0].id,
                 }));
             }
         } catch (error) {
@@ -46,11 +50,22 @@ export const AdminDashboard: FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [navigate]);
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
+
+    const handleCreateUser = async (e: React.SubmitEvent) => {
+        e.preventDefault();
+        try {
+            await api.post("/auth/users", newUser);
+            setNewUser({ email: "", full_name: "" });
+            fetchData();
+        } catch (error) {
+            console.error("Error creating user", error);
+        }
+    };
 
     const handleCreateGym = async (e: React.SubmitEvent) => {
         e.preventDefault();
@@ -76,7 +91,14 @@ export const AdminDashboard: FC = () => {
         }
     };
 
-    if (loading) return <div>Loading Admin Panel...</div>;
+    if (loading)
+        return (
+            <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+                <div className="text-brand-muted animate-pulse font-mono uppercase tracking-widest text-xs">
+                    Loading Admin Panel...
+                </div>
+            </div>
+        );
 
     return (
         <div className="min-h-screen bg-brand-bg p-12">
@@ -91,72 +113,127 @@ export const AdminDashboard: FC = () => {
                     </button>
                 </div>
 
-                <section className="bg-brand-surface border border-brand-border rounded-lg p-8 mb-10">
-                    <h2 className="text-xl font-bold mb-6">Create New Gym</h2>
+                <section className="bg-brand-surface border border-brand-border rounded-lg p-8 mb-8">
+                    <h2 className="text-xl font-bold mb-6">Add New Owner</h2>
                     <form
-                        onSubmit={handleCreateGym}
+                        onSubmit={handleCreateUser}
                         className="flex gap-4 items-end"
                     >
-                        <div className="flex-1">
+                        <div className="flex-[2]">
                             <label className="block text-[11px] uppercase tracking-wider text-brand-muted mb-2">
-                                Gym Name
+                                Email (Google Account)
                             </label>
                             <input
                                 required
+                                type="email"
                                 className="w-full px-4 py-2 rounded bg-brand-bg border border-brand-border"
-                                value={newGym.gym_name}
+                                value={newUser.email}
                                 onChange={(e) =>
-                                    setNewGym({
-                                        ...newGym,
-                                        gym_name: e.target.value,
+                                    setNewUser({
+                                        ...newUser,
+                                        email: e.target.value,
                                     })
                                 }
                             />
                         </div>
                         <div className="flex-1">
                             <label className="block text-[11px] uppercase tracking-wider text-brand-muted mb-2">
-                                Location
+                                Full Name
                             </label>
                             <input
                                 required
                                 className="w-full px-4 py-2 rounded bg-brand-bg border border-brand-border"
-                                value={newGym.gym_location}
+                                value={newUser.full_name}
                                 onChange={(e) =>
-                                    setNewGym({
-                                        ...newGym,
-                                        gym_location: e.target.value,
+                                    setNewUser({
+                                        ...newUser,
+                                        full_name: e.target.value,
                                     })
                                 }
                             />
-                        </div>
-                        <div className="flex-1">
-                            <label className="block text-[11px] uppercase tracking-wider text-brand-muted mb-2">
-                                Initial Owner
-                            </label>
-                            <select
-                                className="w-full px-4 py-2 rounded bg-brand-bg border border-brand-border"
-                                value={newGym.owner_id}
-                                onChange={(e) =>
-                                    setNewGym({
-                                        ...newGym,
-                                        owner_id: parseInt(e.target.value),
-                                    })
-                                }
-                            >
-                                {users.map((u) => (
-                                    <option key={u.id} value={u.id}>
-                                        {u.name} ({u.email})
-                                    </option>
-                                ))}
-                            </select>
                         </div>
                         <button
                             type="submit"
-                            className="px-6 py-2 bg-brand-accent text-white rounded font-bold"
+                            className="px-6 py-2 bg-brand-surface border border-brand-border rounded font-bold transition-all duration-150 hover:bg-brand-bg"
                         >
-                            Create Gym
+                            Add Owner
                         </button>
                     </form>
+                </section>
+
+                <section className="bg-brand-surface border border-brand-border rounded-lg p-8 mb-10">
+                    <h2 className="text-xl font-bold mb-6">Create New Gym</h2>
+                    {users.length > 0 ? (
+                        <form
+                            onSubmit={handleCreateGym}
+                            className="flex gap-4 items-end"
+                        >
+                            <div className="flex-1">
+                                <label className="block text-[11px] uppercase tracking-wider text-brand-muted mb-2">
+                                    Gym Name
+                                </label>
+                                <input
+                                    required
+                                    className="w-full px-4 py-2 rounded bg-brand-bg border border-brand-border"
+                                    value={newGym.gym_name}
+                                    onChange={(e) =>
+                                        setNewGym({
+                                            ...newGym,
+                                            gym_name: e.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-[11px] uppercase tracking-wider text-brand-muted mb-2">
+                                    Location
+                                </label>
+                                <input
+                                    required
+                                    className="w-full px-4 py-2 rounded bg-brand-bg border border-brand-border"
+                                    value={newGym.gym_location}
+                                    onChange={(e) =>
+                                        setNewGym({
+                                            ...newGym,
+                                            gym_location: e.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-[11px] uppercase tracking-wider text-brand-muted mb-2">
+                                    Initial Owner
+                                </label>
+                                <select
+                                    className="w-full px-4 py-2 rounded bg-brand-bg border border-brand-border"
+                                    value={newGym.owner_id}
+                                    onChange={(e) =>
+                                        setNewGym({
+                                            ...newGym,
+                                            owner_id: parseInt(e.target.value),
+                                        })
+                                    }
+                                >
+                                    {users.map((u) => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.name} ({u.email})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                type="submit"
+                                className="px-6 py-2 bg-brand-accent text-white rounded font-bold transition-all duration-150 hover:opacity-90"
+                            >
+                                Create Gym
+                            </button>
+                        </form>
+                    ) : (
+                        <div className="text-brand-muted italic py-4">
+                            Please add at least one owner above before creating
+                            a gym.
+                        </div>
+                    )}
                 </section>
 
                 <section className="bg-brand-surface border border-brand-border rounded-lg overflow-hidden">
@@ -181,7 +258,7 @@ export const AdminDashboard: FC = () => {
                             {gyms.map((gym) => (
                                 <tr
                                     key={gym.gym_id}
-                                    className="hover:bg-brand-bg/50"
+                                    className="hover:bg-brand-bg transition-colors"
                                 >
                                     <td className="p-4 border-b border-brand-border font-bold">
                                         {gym.gym_name}

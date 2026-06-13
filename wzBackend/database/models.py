@@ -61,7 +61,7 @@ class MemberGym(Base):
 class Gym(Base):
     __tablename__ = "gyms"
 
-    gym_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    gym_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
     gym_name: Mapped[str] = mapped_column(String)
     gym_location: Mapped[str] = mapped_column(String)
