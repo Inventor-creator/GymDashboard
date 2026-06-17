@@ -11,6 +11,12 @@ class MemberBase(BaseModel):
 class MemberCreate(MemberBase):
     gym_id: int
 
+class MemberUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+    plan: Optional[str] = None
+
 class MemberResponse(MemberBase):
     member_id: int
     joining_date: datetime

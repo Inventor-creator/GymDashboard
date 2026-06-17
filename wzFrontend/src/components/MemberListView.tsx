@@ -15,7 +15,8 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
     const [search, setSearch] = useState("");
     const [members, setMembers] = useState<Member[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newMember, setNewMember] = useState({
+    const [editingMember, setEditingMember] = useState<Member | null>(null);
+    const [memberForm, setMemberForm] = useState({
         name: "",
         email: "",
         phone_number: "",
@@ -35,20 +36,54 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         fetchMembers();
     }, [gymId]);
 
-    const handleAddMember = async (e: React.FormEvent) => {
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                setIsModalOpen(false);
+            }
+        };
+        window.addEventListener("keydown", handleEsc);
+        return () => window.removeEventListener("keydown", handleEsc);
+    }, []);
+
+    const handleOpenAddModal = () => {
+        setEditingMember(null);
+        setMemberForm({
+            name: "",
+            email: "",
+            phone_number: "",
+            plan: "monthly",
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEditModal = (member: Member) => {
+        setEditingMember(member);
+        setMemberForm({
+            name: member.name,
+            email: member.email,
+            phone_number: member.phone_number,
+            plan: member.plan,
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post("/members/", { ...newMember, gym_id: gymId });
+            if (editingMember) {
+                await api.put(
+                    `/members/${editingMember.member_id}`,
+                    memberForm,
+                );
+            } else {
+                await api.post("/members/", { ...memberForm, gym_id: gymId });
+            }
             setIsModalOpen(false);
-            setNewMember({
-                name: "",
-                email: "",
-                phone_number: "",
-                plan: "monthly",
-            });
             fetchMembers();
         } catch (error) {
-            console.error("Error adding member:", error);
+            console.error("error:", error);
+            alert("recheck the contents, wrong inputs");
         }
     };
 
@@ -80,7 +115,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                     <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={handleOpenAddModal}
                         className="px-4 py-2 rounded font-semibold bg-brand-accent text-white border border-brand-accent transition-all duration-150 hover:opacity-90"
                     >
                         Add Member
@@ -89,11 +124,16 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             </div>
 
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-brand-surface p-8 rounded-lg border border-brand-border w-full max-w-[400px]">
-                        <h2 className="text-2xl mb-6">Add New Member</h2>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div
+                        className="bg-brand-surface p-8 rounded-lg border border-brand-border w-full max-w-[400px] shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 className="text-2xl mb-6">
+                            {editingMember ? "Edit Member" : "Add New Member"}
+                        </h2>
                         <form
-                            onSubmit={handleAddMember}
+                            onSubmit={handleSubmit}
                             className="flex flex-col gap-4"
                         >
                             <div>
@@ -104,10 +144,10 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     required
                                     type="text"
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
-                                    value={newMember.name}
+                                    value={memberForm.name}
                                     onChange={(e) =>
-                                        setNewMember({
-                                            ...newMember,
+                                        setMemberForm({
+                                            ...memberForm,
                                             name: e.target.value,
                                         })
                                     }
@@ -121,10 +161,10 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     required
                                     type="email"
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
-                                    value={newMember.email}
+                                    value={memberForm.email}
                                     onChange={(e) =>
-                                        setNewMember({
-                                            ...newMember,
+                                        setMemberForm({
+                                            ...memberForm,
                                             email: e.target.value,
                                         })
                                     }
@@ -138,10 +178,10 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     required
                                     type="text"
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
-                                    value={newMember.phone_number}
+                                    value={memberForm.phone_number}
                                     onChange={(e) =>
-                                        setNewMember({
-                                            ...newMember,
+                                        setMemberForm({
+                                            ...memberForm,
                                             phone_number: e.target.value,
                                         })
                                     }
@@ -153,10 +193,10 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                 </label>
                                 <select
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
-                                    value={newMember.plan}
+                                    value={memberForm.plan}
                                     onChange={(e) =>
-                                        setNewMember({
-                                            ...newMember,
+                                        setMemberForm({
+                                            ...memberForm,
                                             plan: e.target.value,
                                         })
                                     }
@@ -181,7 +221,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     type="submit"
                                     className="flex-1 px-4 py-2 rounded font-semibold bg-brand-accent text-white hover:opacity-90"
                                 >
-                                    Save Member
+                                    {editingMember
+                                        ? "Update Member"
+                                        : "Save Member"}
                                 </button>
                             </div>
                         </form>
@@ -233,7 +275,12 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     </span>
                                 </td>
                                 <td className="p-4 border-b border-brand-border">
-                                    <button className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[12px]">
+                                    <button
+                                        onClick={() =>
+                                            handleOpenEditModal(member)
+                                        }
+                                        className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[12px]"
+                                    >
                                         Edit
                                     </button>
                                 </td>

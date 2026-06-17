@@ -30,26 +30,10 @@ class Member(Base):
 
     member_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String)
-    joining_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    plan: Mapped[str] = mapped_column(String)
     phone_number: Mapped[str] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
 
     gyms: Mapped[list["Gym"]] = Relationship("Gym", secondary="member_gyms", back_populates="members")
-
-    @property
-    def end_date(self) -> datetime:
-        #plans: monthly, quarterly, half yearly, yearly
-        if self.plan == "monthly":
-            return self.joining_date + timedelta(days=30)
-        elif self.plan == "quarterly":
-            return self.joining_date + timedelta(days=90)
-        elif self.plan == "half yearly":
-            return self.joining_date + timedelta(days=180)
-        elif self.plan == "yearly":
-            return self.joining_date + timedelta(days=365)
-        else:
-            return self.joining_date
 
 
 class MemberGym(Base):
@@ -57,6 +41,8 @@ class MemberGym(Base):
 
     member_id: Mapped[int] = mapped_column(Integer, ForeignKey("members.member_id"), primary_key=True)
     gym_id: Mapped[int] = mapped_column(Integer, ForeignKey("gyms.gym_id"), primary_key=True)
+    joining_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    plan: Mapped[str] = mapped_column(String)
 
 class Gym(Base):
     __tablename__ = "gyms"
