@@ -17,10 +17,6 @@ api.interceptors.request.use(
         // if (token) {
         //   config.headers.Authorization = `Bearer ${token}`;
         // }
-        const activeGymId = localStorage.getItem("activeGymId");
-        if (activeGymId) {
-            config.headers["X-Gym-Id"] = activeGymId;
-        }
         return config;
     },
     (error) => {

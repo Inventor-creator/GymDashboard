@@ -1,4 +1,5 @@
 import { FC } from "react";
+import { useGym } from "../contexts/GymContext";
 
 interface SidebarProps {
     activeView: string;
@@ -6,6 +7,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: FC<SidebarProps> = ({ activeView, setView }) => {
+    const { setActiveGymId } = useGym();
+
     return (
         <div className="w-sidebar border-r border-brand-border bg-brand-surface flex flex-col fixed h-screen z-10">
             <div className="p-6 flex items-center gap-3 border-b border-brand-border">
@@ -51,7 +54,7 @@ export const Sidebar: FC<SidebarProps> = ({ activeView, setView }) => {
                 <li
                     className="px-4 py-2 rounded flex items-center gap-3 cursor-pointer font-medium text-brand-muted hover:bg-brand-bg hover:text-brand-fg list-none transition-all duration-150"
                     onClick={() => {
-                        localStorage.removeItem("activeGymId");
+                        setActiveGymId(null);
                         window.location.href = `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/auth/logout`;
                     }}
                 >

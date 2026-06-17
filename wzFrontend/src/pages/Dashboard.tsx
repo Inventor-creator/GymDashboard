@@ -4,20 +4,18 @@ import { Sidebar } from "../components/Sidebar";
 import { FinanceView } from "../components/FinanceView";
 import { MemberListView } from "../components/MemberListView";
 import { AnalyticsView } from "../components/AnalyticsView";
+import { useGym } from "../contexts/GymContext";
 
 export const Dashboard: FC = () => {
     const [view, setView] = useState("finances");
-    const [activeGymId, setActiveGymId] = useState<number | null>(null);
+    const { activeGymId } = useGym();
     const navigate = useNavigate();
 
     useEffect(() => {
-        const gymId = localStorage.getItem("activeGymId");
-        if (!gymId) {
+        if (!activeGymId) {
             navigate("/select-gym");
-        } else {
-            setActiveGymId(parseInt(gymId));
         }
-    }, [navigate]);
+    }, [activeGymId, navigate]);
 
     if (!activeGymId) return null;
 

@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
+import { useGym } from "../contexts/GymContext";
 
 interface Gym {
     gym_id: number;
@@ -19,6 +20,7 @@ export const SelectGym: FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+    const { setActiveGymId } = useGym();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -39,13 +41,13 @@ export const SelectGym: FC = () => {
     }, []);
 
     const handleSelectGym = (gymId: number) => {
-        localStorage.setItem("activeGymId", gymId.toString());
+        setActiveGymId(gymId);
         navigate("/dashboard");
     };
 
     const handleLogout = async () => {
         try {
-            localStorage.removeItem("activeGymId");
+            setActiveGymId(null);
             // Direct redirect to backend logout to clear session cookies
             window.location.href = `${api.defaults.baseURL}/auth/logout`;
         } catch (error) {
