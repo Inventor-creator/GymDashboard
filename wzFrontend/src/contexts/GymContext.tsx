@@ -2,9 +2,9 @@ import {
     createContext,
     useContext,
     useState,
-    ReactNode,
-    FC,
     useEffect,
+    type ReactNode,
+    type FC,
 } from "react";
 import api from "../api";
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 
@@ -7,11 +7,6 @@ interface User {
     email: string;
     name: string;
     picture: string;
-}
-
-interface AuthContextType {
-    user: User | null;
-    loading: boolean;
 }
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {

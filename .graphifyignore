@@ -1,0 +1,48 @@
+# Exclude all markdown files recursively
+**/*.md
+*.md
+wzFrontend/README.md
+wzBackend/README.md
+.agents/workflows/graphify.md
+.agents/rules/graphify.md
+
+# Exclude all text files recursively
+**/*.txt
+*.txt
+wzBackend/requirements.txt
+
+# Exclude all pdf files recursively
+**/*.pdf
+*.pdf
+
+# Exclude all media and assets recursively
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.svg
+**/*.webp
+**/*.ico
+**/*.mp4
+**/*.webm
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webp
+*.ico
+
+# Ignore build, packages, and temp directories
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+.git/
+.agents/
+venv/
+**/venv/
+__pycache__/
+**/__pycache__/

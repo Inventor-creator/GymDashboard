@@ -57,6 +57,7 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
 
         # Store user info in session
         user_id = user.id if hasattr(user, 'id') else user.admin_id
+
         request.session['user'] = {
             "id": user_id,
             "email": user.email,

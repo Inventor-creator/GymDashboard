@@ -1,4 +1,4 @@
-import { FC, useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 

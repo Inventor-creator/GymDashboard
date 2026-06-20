@@ -1,9 +1,10 @@
-import { FC, useState, useEffect } from "react";
+import { useState, useEffect, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Sidebar";
 import { FinanceView } from "../components/FinanceView";
 import { MemberListView } from "../components/MemberListView";
 import { AnalyticsView } from "../components/AnalyticsView";
+import { PlansAndTrainersView } from "../components/PlansAndTrainersView";
 import { useGym } from "../contexts/GymContext";
 
 export const Dashboard: FC = () => {
@@ -27,6 +28,7 @@ export const Dashboard: FC = () => {
                     <div className="font-medium">
                         {view === "finances" && "Financial Reporting"}
                         {view === "members" && "Member Management"}
+                        {view === "plans" && "Plans & Trainers"}
                         {view === "analytics" && "Revenue Analytics"}
                     </div>
                     <div className="flex items-center gap-4">
@@ -45,6 +47,7 @@ export const Dashboard: FC = () => {
 
                 {view === "finances" && <FinanceView />}
                 {view === "members" && <MemberListView gymId={activeGymId} />}
+                {view === "plans" && <PlansAndTrainersView />}
                 {view === "analytics" && <AnalyticsView />}
             </main>
         </div>
