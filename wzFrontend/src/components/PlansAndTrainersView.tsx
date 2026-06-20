@@ -6,6 +6,7 @@ interface Plan {
     name: string;
     price: number;
     is_active: boolean;
+    duration_days: number;
 }
 
 interface Trainer {
@@ -28,7 +29,7 @@ export const PlansAndTrainersView: FC = () => {
     const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
     const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
 
-    const [planForm, setPlanForm] = useState({ name: "", price: "" });
+    const [planForm, setPlanForm] = useState({ name: "", price: "", duration_days: "30", is_active: true });
     const [trainerForm, setTrainerForm] = useState({
         name: "",
         email: "",
@@ -62,21 +63,22 @@ export const PlansAndTrainersView: FC = () => {
 
     const openAddPlan = () => {
         setEditingPlan(null);
-        setPlanForm({ name: "", price: "" });
+        setPlanForm({ name: "", price: "", duration_days: "30", is_active: true });
         setShowPlanModal(true);
     };
 
     const openEditPlan = (p: Plan) => {
         setEditingPlan(p);
-        setPlanForm({ name: p.name, price: String(p.price) });
+        setPlanForm({ name: p.name, price: String(p.price), duration_days: String(p.duration_days), is_active: p.is_active });
         setShowPlanModal(true);
     };
 
     const handlePlanSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const payload = { name: planForm.name, price: parseFloat(planForm.price) };
+            const payload: Record<string, unknown> = { name: planForm.name, price: parseFloat(planForm.price), duration_days: parseInt(planForm.duration_days) };
             if (editingPlan) {
+                payload.is_active = planForm.is_active;
                 await api.put(`/plans/${editingPlan.plan_id}`, payload);
             } else {
                 await api.post("/plans/", payload);
@@ -199,6 +201,9 @@ export const PlansAndTrainersView: FC = () => {
                                         Price
                                     </th>
                                     <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
+                                        Duration
+                                    </th>
+                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
                                         Status
                                     </th>
                                     <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
@@ -211,6 +216,7 @@ export const PlansAndTrainersView: FC = () => {
                                     <tr key={p.plan_id} className="hover:bg-[oklch(99%_0.002_240)] transition-colors">
                                         <td className="p-4 border-b border-brand-border font-semibold">{p.name}</td>
                                         <td className="p-4 border-b border-brand-border mono">₹{p.price.toLocaleString()}</td>
+                                        <td className="p-4 border-b border-brand-border text-brand-muted">{p.duration_days} Days</td>
                                         <td className="p-4 border-b border-brand-border">
                                             <span className={`status-pill ${p.is_active ? "bg-status-active-bg text-status-active-fg" : "bg-status-canceled-bg text-status-canceled-fg"}`}>
                                                 {p.is_active ? "Active" : "Inactive"}
@@ -304,6 +310,29 @@ export const PlansAndTrainersView: FC = () => {
                                     onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
                                 />
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Duration (Days)</label>
+                                <input 
+                                    required 
+                                    type="number" 
+                                    min="1"
+                                    className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                    value={planForm.duration_days}
+                                    onChange={(e) => setPlanForm({ ...planForm, duration_days: e.target.value })}
+                                />
+                            </div>
+                            {editingPlan && (
+                                <div className="flex items-center gap-2 mt-2">
+                                    <input 
+                                        type="checkbox" 
+                                        id="desktop-p-active" 
+                                        checked={planForm.is_active} 
+                                        onChange={e => setPlanForm({...planForm, is_active: e.target.checked})} 
+                                        className="w-4 h-4 rounded border-brand-border" 
+                                    />
+                                    <label htmlFor="desktop-p-active" className="text-sm font-semibold">Active Plan</label>
+                                </div>
+                            )}
                             <div className="flex gap-3 mt-4">
                                 <button type="button" onClick={() => setShowPlanModal(false)} className="flex-1 px-4 py-2 rounded font-semibold border border-brand-border hover:bg-brand-bg">
                                     Cancel

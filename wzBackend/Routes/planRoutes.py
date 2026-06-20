@@ -12,7 +12,7 @@ router = APIRouter(prefix="/plans", tags=["Plans"])
 def get_plans(db: Session = Depends(get_db), x_gym_id: Optional[int] = Header(None)):
     if not x_gym_id:
         raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
-    plans = db.query(Plan).filter(Plan.gym_id == x_gym_id, Plan.is_active == True).all()
+    plans = db.query(Plan).filter(Plan.gym_id == x_gym_id).all()
     return plans
 
 
@@ -28,7 +28,7 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Plan with this name already exists")
 
-    db_plan = Plan(gym_id=plan.gym_id, name=plan.name, price=plan.price)
+    db_plan = Plan(gym_id=plan.gym_id, name=plan.name, price=plan.price, duration_days=plan.duration_days)
     db.add(db_plan)
     db.commit()
     db.refresh(db_plan)

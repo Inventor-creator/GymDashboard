@@ -136,6 +136,36 @@ export const FinanceView: FC = () => {
         }
     };
 
+    const handleExportCsv = async () => {
+        try {
+            const response = await api.get('/finances/export', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'transactions.csv');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Failed to export transactions", error);
+            alert("Failed to export transactions");
+        }
+    };
+
+    const handleRenewBilling = async () => {
+        if (!confirm("Are you sure you want to run the billing cycle? This will add monthly costs to all active members' total owed.")) return;
+        try {
+            const res = await api.post('/finances/renew-billing');
+            alert(res.data.detail);
+            fetchSummary();
+            fetchOutstanding();
+            fetchTransactions();
+        } catch (error) {
+            console.error("Failed to renew billing", error);
+            alert("Failed to renew billing");
+        }
+    };
+
     const sourcePieData = summary
         ? [
               {
@@ -160,9 +190,24 @@ export const FinanceView: FC = () => {
                 <h1 className="text-[32px] mb-2 leading-tight">
                     Financial Overview
                 </h1>
-                <p className="text-brand-muted">
+                <p className="text-brand-muted mb-4">
                     Detailed breakdown of gym revenue and income.
                 </p>
+                <div className="flex gap-4">
+                    <button 
+                        onClick={handleExportCsv}
+                        className="bg-brand-surface border border-brand-border text-brand-fg px-4 py-2 text-[14px] font-bold hover:bg-slate-50 transition-colors flex items-center gap-2 rounded"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Export CSV
+                    </button>
+                    <button 
+                        onClick={handleRenewBilling}
+                        className="bg-brand-fg text-brand-surface px-4 py-2 text-[14px] font-bold hover:opacity-90 transition-opacity rounded"
+                    >
+                        Run Billing Cycle
+                    </button>
+                </div>
             </div>
 
             {summary && (

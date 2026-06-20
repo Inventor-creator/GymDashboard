@@ -1,10 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import csv
+import io
 from sqlalchemy import func, extract
 from typing import List, Optional
 from datetime import datetime, date
 from database import get_db
-from database.models import Transactions, Member, MemberGym, Gym
+from database.models import Transactions, Member, MemberGym, Gym, Plan
+from datetime import timedelta
 from schemas.FinanceSchemas import (
     FinanceSummary,
     MonthlyBreakdown,
@@ -212,7 +216,12 @@ def record_payment(
     if not mg:
         raise HTTPException(status_code=404, detail="Membership not found")
 
-    mg.paid = True
+    mg.total_owed = max(0.0, float(mg.total_owed) - payment.amount)
+    if mg.total_owed <= 0:
+        mg.paid = True
+    else:
+        mg.paid = False
+        
     mg.payment_method = payment.payment_method
     if payment.remark:
         mg.payment_remark = payment.remark
@@ -231,3 +240,73 @@ def record_payment(
     db.add(tx)
     db.commit()
     return {"detail": "Payment recorded"}
+
+@router.get("/export")
+def export_transactions_csv(
+    db: Session = Depends(get_db),
+    x_gym_id: Optional[int] = Header(None)
+):
+    if not x_gym_id:
+        raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
+        
+    transactions = (
+        db.query(Transactions, Member.name)
+        .join(Member, Transactions.member_id == Member.member_id)
+        .filter(Transactions.gym_id == x_gym_id)
+        .order_by(Transactions.date.desc())
+        .all()
+    )
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Transaction ID", "Date", "Member Name", "Amount", "Status", 
+        "Plan", "Paid By", "Method", "Remark"
+    ])
+    
+    for tx, member_name in transactions:
+        writer.writerow([
+            tx.transaction_id,
+            tx.date,
+            member_name,
+            float(tx.amount) if tx.amount else 0,
+            tx.status,
+            tx.plan_name or "",
+            tx.paid_by,
+            tx.payment_method,
+            tx.remark or ""
+        ])
+        
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=transactions.csv"}
+    )
+
+@router.post("/renew-billing")
+def renew_billing(
+    db: Session = Depends(get_db),
+    x_gym_id: Optional[int] = Header(None)
+):
+    if not x_gym_id:
+        raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
+        
+    active_members = db.query(MemberGym).filter(MemberGym.gym_id == x_gym_id).all()
+    count = 0
+    today = date.today()
+    for mg in active_members:
+        if mg.next_billing_date and today >= mg.next_billing_date:
+            monthly_cost = float(mg.plan_price) + (float(mg.personal_training_cost) if mg.has_personal_training else 0)
+            if monthly_cost > 0:
+                mg.total_owed = float(mg.total_owed) + monthly_cost
+                mg.paid = False
+                
+                plan_db = db.query(Plan).filter(Plan.gym_id == x_gym_id, Plan.name == mg.plan).first()
+                duration = plan_db.duration_days if plan_db else 30
+                
+                mg.next_billing_date = mg.next_billing_date + timedelta(days=duration)
+                count += 1
+            
+    db.commit()
+    return {"detail": f"Successfully renewed billing for {count} members."}

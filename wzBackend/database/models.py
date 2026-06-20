@@ -57,6 +57,7 @@ class MemberGym(Base):
     member_id: Mapped[int] = mapped_column(Integer, ForeignKey("members.member_id"), primary_key=True)
     gym_id: Mapped[int] = mapped_column(Integer, ForeignKey("gyms.gym_id"), primary_key=True)
     joining_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    next_billing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     plan: Mapped[str] = mapped_column(String)
     plan_price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     has_personal_training: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -92,6 +93,7 @@ class Plan(Base):
     gym_id: Mapped[int] = mapped_column(Integer, ForeignKey("gyms.gym_id"), index=True)
     name: Mapped[str] = mapped_column(String(50))
     price: Mapped[float] = mapped_column(Numeric(10, 2))
+    duration_days: Mapped[int] = mapped_column(Integer, default=30)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     gym: Mapped["Gym"] = Relationship("Gym", back_populates="plans")

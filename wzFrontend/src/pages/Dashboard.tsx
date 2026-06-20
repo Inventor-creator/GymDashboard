@@ -6,11 +6,14 @@ import { MemberListView } from "../components/MemberListView";
 import { AnalyticsView } from "../components/AnalyticsView";
 import { PlansAndTrainersView } from "../components/PlansAndTrainersView";
 import { useGym } from "../contexts/GymContext";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import { MobileDashboard } from "../components/mobile/MobileDashboard";
 
 export const Dashboard: FC = () => {
     const [view, setView] = useState("finances");
     const { activeGymId } = useGym();
     const navigate = useNavigate();
+    const isMobile = useMediaQuery("(max-width: 768px)");
 
     useEffect(() => {
         if (!activeGymId) {
@@ -19,6 +22,10 @@ export const Dashboard: FC = () => {
     }, [activeGymId, navigate]);
 
     if (!activeGymId) return null;
+
+    if (isMobile) {
+        return <MobileDashboard />;
+    }
 
     return (
         <div className="flex min-h-screen">

@@ -14,12 +14,14 @@ class MemberBase(BaseModel):
     paid: bool = False
     payment_method: str = "cash"
     payment_remark: Optional[str] = None
+    initial_paid_amount: float = 0
 
 
 class MemberCreate(MemberBase):
     gym_id: int
     custom_plan_name: Optional[str] = None
     custom_plan_price: Optional[float] = None
+    custom_plan_duration: Optional[int] = None
 
 
 class MemberUpdate(BaseModel):
@@ -35,11 +37,13 @@ class MemberUpdate(BaseModel):
     payment_remark: Optional[str] = None
     custom_plan_name: Optional[str] = None
     custom_plan_price: Optional[float] = None
+    custom_plan_duration: Optional[int] = None
 
 
 class MemberResponse(MemberBase):
     member_id: int
     joining_date: datetime
+    next_billing_date: Optional[datetime] = None
     total_owed: float
 
     class Config:

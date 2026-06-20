@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from database import get_db
-from database.models import Member, Gym, MemberGym, Plan
+from database.models import Member, Gym, MemberGym, Plan, Transactions
 from schemas.MemberSchemas import MemberCreate, MemberResponse, MemberUpdate
 
 router = APIRouter(prefix="/members", tags=["Members"])
@@ -38,6 +38,7 @@ def get_members(db: Session = Depends(get_db), x_gym_id: Optional[int] = Header(
                 "paid": member_gym.paid,
                 "payment_method": member_gym.payment_method,
                 "payment_remark": member_gym.payment_remark,
+                "next_billing_date": member_gym.next_billing_date,
             }
         )
     return output
@@ -86,9 +87,17 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
             .first()
         )
         plan_price = float(db_plan.price) if db_plan else member.plan_price
+        plan_duration = db_plan.duration_days if db_plan else 30
+        
+    if member.custom_plan_name and member.custom_plan_price is not None:
+        plan_duration = member.custom_plan_duration or 30
 
-    # Auto-calculate total owed
-    total_owed = plan_price + (member.personal_training_cost if member.has_personal_training else 0)
+    # Calculate total cost
+    total_cost = plan_price + (member.personal_training_cost if member.has_personal_training else 0)
+    
+    # Calculate running balance (total_owed) and paid status
+    total_owed = max(0.0, total_cost - member.initial_paid_amount)
+    paid_status = (total_owed <= 0)
 
     db_membership = MemberGym(
         member_id=db_member.member_id,
@@ -96,14 +105,30 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         plan=plan_name,
         plan_price=plan_price,
         joining_date=datetime.now(),
+        next_billing_date=date.today() + timedelta(days=plan_duration),
         has_personal_training=member.has_personal_training,
         personal_training_cost=member.personal_training_cost if member.has_personal_training else 0,
         total_owed=total_owed,
-        paid=member.paid,
+        paid=paid_status,
         payment_method=member.payment_method,
         payment_remark=member.payment_remark,
     )
     db.add(db_membership)
+    
+    if member.initial_paid_amount > 0:
+        tx = Transactions(
+            member_id=db_member.member_id,
+            gym_id=member.gym_id,
+            amount=member.initial_paid_amount,
+            status="paid",
+            paid_by=member.payment_method,
+            payment_method=member.payment_method,
+            date=date.today(),
+            plan_name=plan_name,
+            remark=member.payment_remark,
+        )
+        db.add(tx)
+        
     db.commit()
     db.refresh(db_member)
     db.refresh(db_membership)
@@ -122,6 +147,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         "paid": db_membership.paid,
         "payment_method": db_membership.payment_method,
         "payment_remark": db_membership.payment_remark,
+        "next_billing_date": db_membership.next_billing_date,
     }
 
 
@@ -145,6 +171,12 @@ def update_member(
         raise HTTPException(status_code=404, detail="Member or Membership not found")
 
     update_data = member_update.dict(exclude_unset=True)
+
+    # Save old total cost to adjust running balance safely
+    old_plan_price = float(db_membership.plan_price)
+    old_pt_cost = float(db_membership.personal_training_cost) if db_membership.has_personal_training else 0
+    old_total_cost = old_plan_price + old_pt_cost
+    old_plan_name = db_membership.plan
 
     # Member-level fields
     if "name" in update_data:
@@ -180,10 +212,35 @@ def update_member(
     if "payment_remark" in update_data:
         db_membership.payment_remark = update_data["payment_remark"]
 
-    # Recalculate total_owed
-    plan_price = float(db_membership.plan_price)
-    pt_cost = float(db_membership.personal_training_cost) if db_membership.has_personal_training else 0
-    db_membership.total_owed = plan_price + pt_cost
+    # If the plan changed, we need to adjust the next_billing_date
+    if db_membership.plan != old_plan_name:
+        # Find old duration
+        old_plan_db = db.query(Plan).filter(Plan.gym_id == x_gym_id, Plan.name == old_plan_name).first()
+        old_duration = old_plan_db.duration_days if old_plan_db else 30
+        
+        # Find new duration
+        if update_data.get("custom_plan_name") and update_data.get("custom_plan_duration") is not None:
+            new_duration = update_data["custom_plan_duration"]
+        else:
+            new_plan_db = db.query(Plan).filter(Plan.gym_id == x_gym_id, Plan.name == db_membership.plan).first()
+            new_duration = new_plan_db.duration_days if new_plan_db else 30
+            
+        if db_membership.next_billing_date:
+            db_membership.next_billing_date = db_membership.next_billing_date - timedelta(days=old_duration) + timedelta(days=new_duration)
+
+    # Recalculate total_owed by adjusting for any price differences
+    new_plan_price = float(db_membership.plan_price)
+    new_pt_cost = float(db_membership.personal_training_cost) if db_membership.has_personal_training else 0
+    new_total_cost = new_plan_price + new_pt_cost
+    
+    cost_difference = new_total_cost - old_total_cost
+    db_membership.total_owed = max(0.0, float(db_membership.total_owed) + cost_difference)
+    
+    # Sync paid status
+    if db_membership.total_owed <= 0:
+        db_membership.paid = True
+    else:
+        db_membership.paid = False
 
     db.commit()
     db.refresh(db_member)
@@ -203,4 +260,5 @@ def update_member(
         "paid": db_membership.paid,
         "payment_method": db_membership.payment_method,
         "payment_remark": db_membership.payment_remark,
+        "next_billing_date": db_membership.next_billing_date,
     }

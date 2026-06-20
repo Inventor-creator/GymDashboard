@@ -38,11 +38,12 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         plan_price: 0,
         has_personal_training: false,
         personal_training_cost: 0,
-        paid: false,
+        initial_paid_amount: "",
         payment_method: "cash",
         payment_remark: "",
         custom_plan_name: "",
         custom_plan_price: "",
+        custom_plan_duration: "30",
     });
 
     const fetchMembers = async () => {
@@ -89,11 +90,12 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             plan_price: plans.find((p) => p.name === "monthly")?.price || 0,
             has_personal_training: false,
             personal_training_cost: 0,
-            paid: false,
+            initial_paid_amount: "",
             payment_method: "cash",
             payment_remark: "",
             custom_plan_name: "",
             custom_plan_price: "",
+            custom_plan_duration: "30",
         });
         setIsModalOpen(true);
     };
@@ -110,11 +112,12 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             plan_price: member.plan_price,
             has_personal_training: member.has_personal_training,
             personal_training_cost: member.personal_training_cost,
-            paid: member.paid,
+            initial_paid_amount: "",
             payment_method: member.payment_method,
             payment_remark: member.payment_remark || "",
             custom_plan_name: isCustom ? member.plan : "",
             custom_plan_price: isCustom ? String(member.plan_price) : "",
+            custom_plan_duration: "30",
         });
         setIsModalOpen(true);
     };
@@ -147,7 +150,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                 plan_price: memberForm.plan_price,
                 has_personal_training: memberForm.has_personal_training,
                 personal_training_cost: memberForm.has_personal_training ? memberForm.personal_training_cost : 0,
-                paid: memberForm.paid,
+                initial_paid_amount: parseFloat(memberForm.initial_paid_amount) || 0,
                 payment_method: memberForm.payment_method,
                 payment_remark: memberForm.payment_remark || null,
             };
@@ -155,6 +158,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             if (isCustomPlan) {
                 payload.custom_plan_name = memberForm.custom_plan_name;
                 payload.custom_plan_price = parseFloat(memberForm.custom_plan_price) || 0;
+                payload.custom_plan_duration = parseInt(memberForm.custom_plan_duration) || 30;
                 payload.plan = memberForm.custom_plan_name;
             }
 
@@ -270,6 +274,13 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                             onChange={(e) => setMemberForm({ ...memberForm, custom_plan_price: e.target.value })}
                                         />
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Custom Plan Duration (Days)</label>
+                                        <input required type="number" min="1" className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                            value={memberForm.custom_plan_duration}
+                                            onChange={(e) => setMemberForm({ ...memberForm, custom_plan_duration: e.target.value })}
+                                        />
+                                    </div>
                                 </>
                             )}
                             <div className="flex items-center gap-3">
@@ -288,13 +299,17 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     />
                                 </div>
                             )}
-                            <div className="flex items-center gap-3">
-                                <input type="checkbox" id="paid" className="rounded border-brand-border"
-                                    checked={memberForm.paid}
-                                    onChange={(e) => setMemberForm({ ...memberForm, paid: e.target.checked })}
-                                />
-                                <label htmlFor="paid" className="text-sm font-medium">Paid</label>
-                            </div>
+                            {!editingMember && (
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium">Initial Payment (₹)</label>
+                                    <input
+                                        type="number"
+                                        value={memberForm.initial_paid_amount}
+                                        onChange={(e) => setMemberForm({ ...memberForm, initial_paid_amount: e.target.value })}
+                                        className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                    />
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium mb-1">Payment Method</label>
                                 <select className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
