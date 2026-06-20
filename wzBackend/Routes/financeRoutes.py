@@ -47,6 +47,7 @@ def get_finance_summary(
         .filter(
             MemberGym.gym_id == x_gym_id,
             MemberGym.paid == False,
+            MemberGym.is_active == True,
         )
         .scalar()
     )
@@ -54,7 +55,7 @@ def get_finance_summary(
     # Active members count
     active_members = (
         db.query(func.count(MemberGym.member_id))
-        .filter(MemberGym.gym_id == x_gym_id)
+        .filter(MemberGym.gym_id == x_gym_id, MemberGym.is_active == True)
         .scalar()
     )
 
@@ -85,7 +86,7 @@ def get_finance_summary(
     # Membership fees from member_gyms where plan_price is counted, PT from personal_training_cost
     membership_fees = (
         db.query(func.coalesce(func.sum(MemberGym.plan_price), 0))
-        .filter(MemberGym.gym_id == x_gym_id)
+        .filter(MemberGym.gym_id == x_gym_id, MemberGym.is_active == True)
         .scalar()
     )
     pt_income = (
@@ -93,6 +94,7 @@ def get_finance_summary(
         .filter(
             MemberGym.gym_id == x_gym_id,
             MemberGym.has_personal_training == True,
+            MemberGym.is_active == True,
         )
         .scalar()
     )
@@ -104,6 +106,7 @@ def get_finance_summary(
         .filter(
             MemberGym.gym_id == x_gym_id,
             MemberGym.joining_date >= first_of_month,
+            MemberGym.is_active == True,
         )
         .scalar()
     )
@@ -178,7 +181,7 @@ def get_outstanding_members(
     rows = (
         db.query(Member, MemberGym)
         .join(MemberGym, Member.member_id == MemberGym.member_id)
-        .filter(MemberGym.gym_id == x_gym_id, MemberGym.paid == False)
+        .filter(MemberGym.gym_id == x_gym_id, MemberGym.paid == False, MemberGym.is_active == True)
         .all()
     )
 
@@ -292,7 +295,7 @@ def renew_billing(
     if not x_gym_id:
         raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
         
-    active_members = db.query(MemberGym).filter(MemberGym.gym_id == x_gym_id).all()
+    active_members = db.query(MemberGym).filter(MemberGym.gym_id == x_gym_id, MemberGym.is_active == True).all()
     count = 0
     today = date.today()
     for mg in active_members:

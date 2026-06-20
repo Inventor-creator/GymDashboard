@@ -39,6 +39,7 @@ def get_members(db: Session = Depends(get_db), x_gym_id: Optional[int] = Header(
                 "payment_method": member_gym.payment_method,
                 "payment_remark": member_gym.payment_remark,
                 "next_billing_date": member_gym.next_billing_date,
+                "is_active": member_gym.is_active,
             }
         )
     return output
@@ -67,7 +68,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         MemberGym.gym_id == member.gym_id,
     ).first()
 
-    if existing_membership:
+    if existing_membership and existing_membership.is_active:
         raise HTTPException(status_code=400, detail="User is already a member of this gym")
 
     # Determine plan name and price
@@ -99,21 +100,35 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
     total_owed = max(0.0, total_cost - member.initial_paid_amount)
     paid_status = (total_owed <= 0)
 
-    db_membership = MemberGym(
-        member_id=db_member.member_id,
-        gym_id=member.gym_id,
-        plan=plan_name,
-        plan_price=plan_price,
-        joining_date=datetime.now(),
-        next_billing_date=date.today() + timedelta(days=plan_duration),
-        has_personal_training=member.has_personal_training,
-        personal_training_cost=member.personal_training_cost if member.has_personal_training else 0,
-        total_owed=total_owed,
-        paid=paid_status,
-        payment_method=member.payment_method,
-        payment_remark=member.payment_remark,
-    )
-    db.add(db_membership)
+    if existing_membership and not existing_membership.is_active:
+        existing_membership.plan = plan_name
+        existing_membership.plan_price = plan_price
+        existing_membership.joining_date = datetime.now()
+        existing_membership.next_billing_date = date.today() + timedelta(days=plan_duration)
+        existing_membership.has_personal_training = member.has_personal_training
+        existing_membership.personal_training_cost = member.personal_training_cost if member.has_personal_training else 0
+        existing_membership.total_owed = total_owed
+        existing_membership.paid = paid_status
+        existing_membership.payment_method = member.payment_method
+        existing_membership.payment_remark = member.payment_remark
+        existing_membership.is_active = True
+        db_membership = existing_membership
+    else:
+        db_membership = MemberGym(
+            member_id=db_member.member_id,
+            gym_id=member.gym_id,
+            plan=plan_name,
+            plan_price=plan_price,
+            joining_date=datetime.now(),
+            next_billing_date=date.today() + timedelta(days=plan_duration),
+            has_personal_training=member.has_personal_training,
+            personal_training_cost=member.personal_training_cost if member.has_personal_training else 0,
+            total_owed=total_owed,
+            paid=paid_status,
+            payment_method=member.payment_method,
+            payment_remark=member.payment_remark,
+        )
+        db.add(db_membership)
     
     if member.initial_paid_amount > 0:
         tx = Transactions(
@@ -148,6 +163,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         "payment_method": db_membership.payment_method,
         "payment_remark": db_membership.payment_remark,
         "next_billing_date": db_membership.next_billing_date,
+        "is_active": db_membership.is_active,
     }
 
 
@@ -211,7 +227,8 @@ def update_member(
         db_membership.payment_method = update_data["payment_method"]
     if "payment_remark" in update_data:
         db_membership.payment_remark = update_data["payment_remark"]
-
+    if "is_active" in update_data:
+        db_membership.is_active = update_data["is_active"]
     # If the plan changed, we need to adjust the next_billing_date
     if db_membership.plan != old_plan_name:
         # Find old duration
@@ -261,4 +278,27 @@ def update_member(
         "payment_method": db_membership.payment_method,
         "payment_remark": db_membership.payment_remark,
         "next_billing_date": db_membership.next_billing_date,
+        "is_active": db_membership.is_active,
     }
+
+
+@router.delete("/{member_id}")
+def delete_member(
+    member_id: int,
+    db: Session = Depends(get_db),
+    x_gym_id: Optional[int] = Header(None),
+):
+    if not x_gym_id:
+        raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
+
+    db_membership = db.query(MemberGym).filter(
+        MemberGym.member_id == member_id,
+        MemberGym.gym_id == x_gym_id,
+    ).first()
+
+    if not db_membership:
+        raise HTTPException(status_code=404, detail="Membership not found")
+
+    db_membership.is_active = False
+    db.commit()
+    return {"detail": "Member removed successfully"}

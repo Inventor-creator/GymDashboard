@@ -38,6 +38,7 @@ class MemberUpdate(BaseModel):
     custom_plan_name: Optional[str] = None
     custom_plan_price: Optional[float] = None
     custom_plan_duration: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
 class MemberResponse(MemberBase):
@@ -45,6 +46,7 @@ class MemberResponse(MemberBase):
     joining_date: datetime
     next_billing_date: Optional[datetime] = None
     total_owed: float
+    is_active: bool
 
     class Config:
         from_attributes = True

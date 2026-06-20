@@ -18,6 +18,7 @@ interface Member {
     paid: boolean;
     payment_method: string;
     payment_remark: string | null;
+    is_active: boolean;
 }
 
 interface Plan {
@@ -115,6 +116,27 @@ export const MobileMemberListView: FC = () => {
         setShowMemberModal(true);
     };
 
+    const handleOpenReadmitModal = (m: Member) => {
+        setEditingMember(null);
+        const isCustom = !m.plan_id;
+        const dbPlan = plans.find(p => p.plan_id === m.plan_id);
+        setMemberForm({
+            name: m.name,
+            email: m.email || "",
+            phone_number: m.phone_number || "",
+            plan_id: isCustom ? "custom" : String(dbPlan?.plan_id || ""),
+            custom_plan_name: isCustom ? m.plan : "",
+            custom_plan_price: isCustom ? String(m.plan_price || "") : "",
+            custom_plan_duration: "30",
+            has_personal_training: m.has_personal_training,
+            personal_training_cost: m.personal_training_cost || 0,
+            initial_paid_amount: "",
+            payment_method: m.payment_method || "cash",
+            payment_remark: m.payment_remark || ""
+        });
+        setShowMemberModal(true);
+    };
+
     const handleOpenEditModal = (m: Member) => {
         const isCustom = !m.plan_id;
         const dbPlan = plans.find(p => p.plan_id === m.plan_id);
@@ -197,6 +219,20 @@ export const MobileMemberListView: FC = () => {
         }
     };
 
+    const handleDeleteMember = async () => {
+        if (!editingMember) return;
+        if (!confirm("Are you sure you want to remove this member? This action cannot be undone.")) return;
+        
+        try {
+            await api.delete(`/members/${editingMember.member_id}`);
+            setShowMemberModal(false);
+            fetchMembers();
+        } catch (error) {
+            console.error("Failed to delete member:", error);
+            alert("Failed to delete member");
+        }
+    };
+
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!payingMember || !activeGymId) return;
@@ -260,14 +296,21 @@ export const MobileMemberListView: FC = () => {
                             <article key={member.member_id} className="member-card relative">
                                 <div className="member-topline">
                                     <div>
-                                        <p className="member-name">{member.name}</p>
+                                        <p className="member-name">
+                                            {member.name}
+                                            {!member.is_active && <span className="ml-2 bg-red-500/10 text-red-500 border border-red-500/20 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold inline-block align-middle mb-0.5">Left</span>}
+                                        </p>
                                         <p className="subline">Joined {new Date(member.joining_date).toLocaleDateString()}</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
                                         <span className={`status-pill ${member.paid ? 'active' : 'pending'}`}>
                                             {member.paid ? "Paid" : "Pending"}
                                         </span>
-                                        <button onClick={() => handleOpenEditModal(member)} className="text-xs font-semibold text-brand-muted underline">Edit</button>
+                                        {member.is_active ? (
+                                            <button onClick={() => handleOpenEditModal(member)} className="text-xs font-semibold text-brand-muted underline">Edit</button>
+                                        ) : (
+                                            <button onClick={() => handleOpenReadmitModal(member)} className="text-xs font-semibold text-brand-accent underline">Readmit</button>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="inline-cluster" style={{ marginTop: "12px" }}>
@@ -361,6 +404,15 @@ export const MobileMemberListView: FC = () => {
                                     </div>
                                 )}
                                 <div className="flex gap-3 mt-4">
+                                    {editingMember && (
+                                        <button 
+                                            type="button" 
+                                            onClick={handleDeleteMember} 
+                                            className="px-4 py-2 rounded-xl font-semibold bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all duration-150"
+                                        >
+                                            Left
+                                        </button>
+                                    )}
                                     <button type="button" onClick={() => setShowMemberModal(false)} className="flex-1 p-3 rounded-xl border border-brand-border font-semibold text-sm">Cancel</button>
                                     <button type="submit" className="flex-1 p-3 rounded-xl bg-brand-fg text-brand-surface font-semibold text-sm">Save</button>
                                 </div>

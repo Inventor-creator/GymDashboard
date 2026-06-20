@@ -15,6 +15,7 @@ interface Member {
     paid: boolean;
     payment_method: string;
     payment_remark: string | null;
+    is_active: boolean;
 }
 
 interface Plan {
@@ -122,6 +123,28 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         setIsModalOpen(true);
     };
 
+    const handleOpenReadmitModal = (member: Member) => {
+        setEditingMember(null);
+        const isCustom = !plans.some((p) => p.name === member.plan);
+        setIsCustomPlan(isCustom);
+        setMemberForm({
+            name: member.name,
+            email: member.email,
+            phone_number: member.phone_number,
+            plan: member.plan,
+            plan_price: member.plan_price,
+            has_personal_training: member.has_personal_training,
+            personal_training_cost: member.personal_training_cost,
+            initial_paid_amount: "",
+            payment_method: member.payment_method,
+            payment_remark: member.payment_remark || "",
+            custom_plan_name: isCustom ? member.plan : "",
+            custom_plan_price: isCustom ? String(member.plan_price) : "",
+            custom_plan_duration: "30",
+        });
+        setIsModalOpen(true);
+    };
+
     const handlePlanChange = (planName: string) => {
         if (planName === "__custom__") {
             setIsCustomPlan(true);
@@ -172,6 +195,20 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         } catch (error) {
             console.error("error:", error);
             alert("recheck the contents, wrong inputs");
+        }
+    };
+
+    const handleDeleteMember = async () => {
+        if (!editingMember) return;
+        if (!confirm("Are you sure you want to remove this member? This action cannot be undone.")) return;
+        
+        try {
+            await api.delete(`/members/${editingMember.member_id}`);
+            setIsModalOpen(false);
+            fetchMembers();
+        } catch (error) {
+            console.error("Failed to delete member:", error);
+            alert("Failed to delete member");
         }
     };
 
@@ -329,6 +366,15 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                 />
                             </div>
                             <div className="flex gap-3 mt-4">
+                                {editingMember && (
+                                    <button 
+                                        type="button" 
+                                        onClick={handleDeleteMember} 
+                                        className="px-4 py-2 rounded font-semibold bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-all duration-150"
+                                    >
+                                        Left
+                                    </button>
+                                )}
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 rounded font-semibold border border-brand-border hover:bg-brand-bg">Cancel</button>
                                 <button type="submit" className="flex-1 px-4 py-2 rounded font-semibold bg-brand-accent text-white hover:opacity-90">
                                     {editingMember ? "Update Member" : "Save Member"}
@@ -356,7 +402,10 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                     <tbody>
                         {filteredMembers.map((member) => (
                             <tr key={member.member_id} className="hover:bg-[oklch(99%_0.002_240)] transition-colors">
-                                <td className="p-4 border-b border-brand-border font-semibold">{member.name}</td>
+                                <td className="p-4 border-b border-brand-border font-semibold">
+                                    {member.name}
+                                    {!member.is_active && <span className="ml-2 bg-red-500/10 text-red-500 border border-red-500/20 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold">Left</span>}
+                                </td>
                                 <td className="p-4 border-b border-brand-border">{member.plan}</td>
                                 <td className="p-4 border-b border-brand-border mono">{new Date(member.joining_date).toLocaleDateString()}</td>
                                 <td className="p-4 border-b border-brand-border">
@@ -370,7 +419,11 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                 </td>
                                 <td className="p-4 border-b border-brand-border">{member.payment_method}</td>
                                 <td className="p-4 border-b border-brand-border">
-                                    <button onClick={() => handleOpenEditModal(member)} className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[12px]">Edit</button>
+                                    {member.is_active ? (
+                                        <button onClick={() => handleOpenEditModal(member)} className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[12px]">Edit</button>
+                                    ) : (
+                                        <button onClick={() => handleOpenReadmitModal(member)} className="px-2 py-1 rounded font-semibold border border-brand-accent bg-brand-accent text-white transition-all duration-150 hover:opacity-90 text-[12px]">Readmit</button>
+                                    )}
                                 </td>
                             </tr>
                         ))}

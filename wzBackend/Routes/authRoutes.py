@@ -3,7 +3,7 @@ from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import models, get_db
 import schemas.UserSchemas
-
+import jwt
 import os
 from dotenv import load_dotenv
 from authService import oauth
@@ -13,6 +13,7 @@ load_dotenv()
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 
 @router.get('/login')
 async def login(request: Request):
@@ -57,7 +58,6 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
 
         # Store user info in session
         user_id = user.id if hasattr(user, 'id') else user.admin_id
-
         request.session['user'] = {
             "id": user_id,
             "email": user.email,
@@ -71,7 +71,7 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
 
 @router.get('/logout')
 async def logout(request: Request):
-    request.session.pop('user', None)
+    request.session.clear()
     return RedirectResponse(url=f"{frontend_url}/login")
 
 @router.get('/me')

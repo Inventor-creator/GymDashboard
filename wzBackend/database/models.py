@@ -66,6 +66,7 @@ class MemberGym(Base):
     paid: Mapped[bool] = mapped_column(Boolean, default=False)
     payment_method: Mapped[str] = mapped_column(String(10), default="cash")
     payment_remark: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class Transactions(Base):
