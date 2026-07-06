@@ -89,13 +89,13 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         )
         plan_price = float(db_plan.price) if db_plan else member.plan_price
         plan_duration = db_plan.duration_days if db_plan else 30
-        
+
     if member.custom_plan_name and member.custom_plan_price is not None:
         plan_duration = member.custom_plan_duration or 30
 
     # Calculate total cost
     total_cost = plan_price + (member.personal_training_cost if member.has_personal_training else 0)
-    
+
     # Calculate running balance (total_owed) and paid status
     total_owed = max(0.0, total_cost - member.initial_paid_amount)
     paid_status = (total_owed <= 0)
@@ -129,7 +129,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
             payment_remark=member.payment_remark,
         )
         db.add(db_membership)
-    
+
     if member.initial_paid_amount > 0:
         tx = Transactions(
             member_id=db_member.member_id,
@@ -143,7 +143,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
             remark=member.payment_remark,
         )
         db.add(tx)
-        
+
     db.commit()
     db.refresh(db_member)
     db.refresh(db_membership)
@@ -178,6 +178,7 @@ def update_member(
         raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
 
     db_member = db.query(Member).filter(Member.member_id == member_id).first()
+    #filter member
     db_membership = db.query(MemberGym).filter(
         MemberGym.member_id == member_id,
         MemberGym.gym_id == x_gym_id,
@@ -223,6 +224,7 @@ def update_member(
 
     if "paid" in update_data:
         db_membership.paid = update_data["paid"]
+
     if "payment_method" in update_data:
         db_membership.payment_method = update_data["payment_method"]
     if "payment_remark" in update_data:
@@ -234,14 +236,14 @@ def update_member(
         # Find old duration
         old_plan_db = db.query(Plan).filter(Plan.gym_id == x_gym_id, Plan.name == old_plan_name).first()
         old_duration = old_plan_db.duration_days if old_plan_db else 30
-        
+
         # Find new duration
         if update_data.get("custom_plan_name") and update_data.get("custom_plan_duration") is not None:
             new_duration = update_data["custom_plan_duration"]
         else:
             new_plan_db = db.query(Plan).filter(Plan.gym_id == x_gym_id, Plan.name == db_membership.plan).first()
             new_duration = new_plan_db.duration_days if new_plan_db else 30
-            
+
         if db_membership.next_billing_date:
             db_membership.next_billing_date = db_membership.next_billing_date - timedelta(days=old_duration) + timedelta(days=new_duration)
 
@@ -249,10 +251,10 @@ def update_member(
     new_plan_price = float(db_membership.plan_price)
     new_pt_cost = float(db_membership.personal_training_cost) if db_membership.has_personal_training else 0
     new_total_cost = new_plan_price + new_pt_cost
-    
+
     cost_difference = new_total_cost - old_total_cost
     db_membership.total_owed = max(0.0, float(db_membership.total_owed) + cost_difference)
-    
+
     # Sync paid status
     if db_membership.total_owed <= 0:
         db_membership.paid = True

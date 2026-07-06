@@ -78,7 +78,7 @@ class Transactions(Base):
 
     paid_by: Mapped[str] = mapped_column(String)
     amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
-    date: Mapped[date] = mapped_column(Date, default=datetime.now)
+    date: Mapped[datetime] = mapped_column(Date, default=datetime.now)
     status: Mapped[str] = mapped_column(String(10), default="pending")
     plan_name: Mapped[str | None] = mapped_column(String, nullable=True)
     payment_method: Mapped[str] = mapped_column(String(10), default="cash")

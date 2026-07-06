@@ -13,8 +13,10 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
     const navigate = useNavigate();
+    const location = window.location;
 
     useEffect(() => {
+        if (location.pathname === "/login") return;
         const checkAuth = async () => {
             try {
                 const response = await api.get("/auth/me");
