@@ -100,6 +100,18 @@ class Plan(Base):
     gym: Mapped["Gym"] = Relationship("Gym", back_populates="plans")
 
 
+class Expense(Base):
+    __tablename__ = "expenses"
+
+    expense_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    gym_id: Mapped[int] = mapped_column(Integer, ForeignKey("gyms.gym_id"), index=True)
+    amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    description: Mapped[str] = mapped_column(String(255))
+    category: Mapped[str] = mapped_column(String(50), default="other")
+    date: Mapped[datetime] = mapped_column(Date, default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
 class Trainer(Base):
     __tablename__ = "trainers"
 

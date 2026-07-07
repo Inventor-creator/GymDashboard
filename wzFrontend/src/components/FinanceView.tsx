@@ -17,6 +17,8 @@ import api from "../api";
 
 interface FinanceSummary {
     total_income_ytd: number;
+    total_expenses: number;
+    net_income: number;
     outstanding_revenue: number;
     active_members: number;
     monthly_breakdown: { month: string; income: number; pt_income: number }[];
@@ -138,11 +140,13 @@ export const FinanceView: FC = () => {
 
     const handleExportCsv = async () => {
         try {
-            const response = await api.get('/finances/export', { responseType: 'blob' });
+            const response = await api.get("/finances/export", {
+                responseType: "blob",
+            });
             const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
+            const link = document.createElement("a");
             link.href = url;
-            link.setAttribute('download', 'transactions.csv');
+            link.setAttribute("download", "transactions.csv");
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -153,9 +157,14 @@ export const FinanceView: FC = () => {
     };
 
     const handleRenewBilling = async () => {
-        if (!confirm("Are you sure you want to run the billing cycle? This will add monthly costs to all active members' total owed.")) return;
+        if (
+            !confirm(
+                "Are you sure you want to run the billing cycle? This will add monthly costs to all active members' total owed.",
+            )
+        )
+            return;
         try {
-            const res = await api.post('/finances/renew-billing');
+            const res = await api.post("/finances/renew-billing");
             alert(res.data.detail);
             fetchSummary();
             fetchOutstanding();
@@ -194,14 +203,27 @@ export const FinanceView: FC = () => {
                     Detailed breakdown of gym revenue and income.
                 </p>
                 <div className="flex gap-4">
-                    <button 
+                    <button
                         onClick={handleExportCsv}
                         className="bg-brand-surface border border-brand-border text-brand-fg px-4 py-2 text-[14px] font-bold hover:bg-slate-50 transition-colors flex items-center gap-2 rounded"
                     >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
                         Export CSV
                     </button>
-                    <button 
+                    <button
                         onClick={handleRenewBilling}
                         className="bg-brand-fg text-brand-surface px-4 py-2 text-[14px] font-bold hover:opacity-90 transition-opacity rounded"
                     >
@@ -249,6 +271,28 @@ export const FinanceView: FC = () => {
                                 +{summary.new_signups_this_month} this month
                             </div>
                         </div>
+                        <div className="bg-brand-surface border border-brand-border p-6 rounded">
+                            <div className="text-brand-muted text-[12px] uppercase tracking-[0.06em] mb-2">
+                                Total Expenses (YTD)
+                            </div>
+                            <div className="text-[28px] font-bold mb-1 mono text-red-500">
+                                ₹{summary.total_expenses.toLocaleString()}
+                            </div>
+                            <div className="text-[12px] text-brand-muted">
+                                deducted from income
+                            </div>
+                        </div>
+                        <div className="bg-brand-surface border border-brand-border p-6 rounded">
+                            <div className="text-brand-muted text-[12px] uppercase tracking-[0.06em] mb-2">
+                                Net Income (YTD)
+                            </div>
+                            <div className="text-[28px] font-bold mb-1 mono">
+                                ₹{summary.net_income.toLocaleString()}
+                            </div>
+                            <div className="text-[12px] text-trend-up">
+                                income − expenses
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-6 mb-8">
@@ -257,7 +301,15 @@ export const FinanceView: FC = () => {
                                 Monthly Revenue
                             </h3>
                             <ResponsiveContainer width="100%" height={220}>
-                                <BarChart data={summary.monthly_breakdown}>
+                                <BarChart
+                                    data={summary.monthly_breakdown}
+                                    margin={{
+                                        top: 5,
+                                        right: 0,
+                                        left: 0,
+                                        bottom: 5,
+                                    }}
+                                >
                                     <CartesianGrid
                                         strokeDasharray="3 3"
                                         stroke="oklch(85% 0.01 240)"
@@ -279,6 +331,7 @@ export const FinanceView: FC = () => {
                                         fill="#82ca9d"
                                         name="PT"
                                         radius={[4, 4, 0, 0]}
+                                        maxBarSize={40}
                                     />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -386,7 +439,9 @@ export const FinanceView: FC = () => {
                                         className={`status-pill ${
                                             tx.status === "paid"
                                                 ? "bg-status-active-bg text-status-active-fg"
-                                                : "bg-status-pending-bg text-status-pending-fg"
+                                                : tx.status === "expense"
+                                                  ? "bg-red-50 text-red-600"
+                                                  : "bg-status-pending-bg text-status-pending-fg"
                                         }`}
                                     >
                                         {tx.status}

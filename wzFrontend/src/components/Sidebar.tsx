@@ -50,6 +50,16 @@ export const Sidebar: FC<SidebarProps> = ({ activeView, setView }) => {
                 </li>
                 <li
                     className={`px-4 py-2 rounded flex items-center gap-3 cursor-pointer font-medium transition-all duration-150 mb-1 ${
+                        activeView === "expenses"
+                            ? "bg-brand-bg text-brand-accent border-l-2 border-brand-accent rounded-l-none rounded-r"
+                            : "text-brand-muted hover:bg-brand-bg hover:text-brand-fg"
+                    }`}
+                    onClick={() => setView("expenses")}
+                >
+                    <span>Expenses</span>
+                </li>
+                <li
+                    className={`px-4 py-2 rounded flex items-center gap-3 cursor-pointer font-medium transition-all duration-150 mb-1 ${
                         activeView === "analytics"
                             ? "bg-brand-bg text-brand-accent border-l-2 border-brand-accent rounded-l-none rounded-r"
                             : "text-brand-muted hover:bg-brand-bg hover:text-brand-fg"

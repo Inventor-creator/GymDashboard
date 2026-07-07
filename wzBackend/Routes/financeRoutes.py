@@ -7,7 +7,7 @@ from sqlalchemy import func, extract
 from typing import List, Optional
 from datetime import datetime, date
 from database import get_db
-from database.models import Transactions, Member, MemberGym, Gym, Plan
+from database.models import Transactions, Member, MemberGym, Gym, Plan, Expense
 from datetime import timedelta
 from schemas.FinanceSchemas import (
     FinanceSummary,
@@ -16,6 +16,8 @@ from schemas.FinanceSchemas import (
     TransactionResponse,
     PaymentRecord,
     OutstandingMember,
+    ExpenseCreate,
+    ExpenseResponse,
 )
 
 router = APIRouter(prefix="/finances", tags=["Finances"])
@@ -99,6 +101,18 @@ def get_finance_summary(
         .scalar()
     )
 
+    # Total expenses YTD
+    total_expenses = (
+        db.query(func.coalesce(func.sum(Expense.amount), 0))
+        .filter(
+            Expense.gym_id == x_gym_id,
+            func.extract("year", Expense.date) == current_year,
+        )
+        .scalar()
+    )
+
+    net_income = float(total_income) - float(total_expenses)
+
     # New signups this month
     first_of_month = datetime(current_year, datetime.now().month, 1)
     new_signups = (
@@ -113,6 +127,8 @@ def get_finance_summary(
 
     return FinanceSummary(
         total_income_ytd=float(total_income),
+        total_expenses=float(total_expenses),
+        net_income=net_income,
         outstanding_revenue=float(outstanding),
         active_members=active_members,
         monthly_breakdown=monthly_breakdown,
@@ -167,6 +183,31 @@ def get_transactions(
                 remark=tx.remark,
             )
         )
+
+    # Include expenses as transactions with negative amounts
+    expense_query = db.query(Expense).filter(Expense.gym_id == x_gym_id)
+    if search:
+        expense_query = expense_query.filter(Expense.description.ilike(f"%{search}%"))
+    expenses = expense_query.order_by(Expense.date.desc()).all()
+
+    for ex in expenses:
+        output.append(
+            TransactionResponse(
+                transaction_id=-ex.expense_id,
+                member_id=0,
+                member_name="Expense",
+                gym_id=ex.gym_id,
+                amount=-float(ex.amount),
+                date=ex.date,
+                status="expense",
+                plan_name=ex.category,
+                paid_by="system",
+                payment_method=ex.category,
+                remark=ex.description,
+            )
+        )
+
+    output.sort(key=lambda t: t.date, reverse=True)
     return output
 
 
@@ -244,6 +285,45 @@ def record_payment(
     db.commit()
     return {"detail": "Payment recorded"}
 
+@router.post("/expenses", response_model=ExpenseResponse)
+def create_expense(
+    expense: ExpenseCreate,
+    db: Session = Depends(get_db),
+    x_gym_id: Optional[int] = Header(None),
+):
+    if not x_gym_id:
+        raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
+
+    ex = Expense(
+        gym_id=x_gym_id,
+        amount=expense.amount,
+        description=expense.description,
+        category=expense.category,
+        date=expense.date or date.today(),
+    )
+    db.add(ex)
+    db.commit()
+    db.refresh(ex)
+    return ex
+
+
+@router.get("/expenses", response_model=List[ExpenseResponse])
+def list_expenses(
+    db: Session = Depends(get_db),
+    x_gym_id: Optional[int] = Header(None),
+):
+    if not x_gym_id:
+        raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
+
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.gym_id == x_gym_id)
+        .order_by(Expense.date.desc())
+        .all()
+    )
+    return expenses
+
+
 @router.get("/export")
 def export_transactions_csv(
     db: Session = Depends(get_db),
@@ -260,10 +340,17 @@ def export_transactions_csv(
         .all()
     )
     
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.gym_id == x_gym_id)
+        .order_by(Expense.date.desc())
+        .all()
+    )
+    
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
-        "Transaction ID", "Date", "Member Name", "Amount", "Status", 
+        "Transaction ID", "Date", "Member Name", "Amount", "Status",
         "Plan", "Paid By", "Method", "Remark"
     ])
     
@@ -278,6 +365,19 @@ def export_transactions_csv(
             tx.paid_by,
             tx.payment_method,
             tx.remark or ""
+        ])
+    
+    for ex in expenses:
+        writer.writerow([
+            f"EXP-{ex.expense_id}",
+            ex.date,
+            "Expense",
+            -float(ex.amount),
+            "expense",
+            ex.category,
+            "system",
+            ex.category,
+            ex.description,
         ])
         
     output.seek(0)

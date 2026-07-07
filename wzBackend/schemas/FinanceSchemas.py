@@ -29,6 +29,26 @@ class PaymentRecord(BaseModel):
     remark: Optional[str] = None
 
 
+class ExpenseCreate(BaseModel):
+    amount: float
+    description: str
+    category: str = "other"
+    date: Optional[datetime] = None
+
+
+class ExpenseResponse(BaseModel):
+    expense_id: int
+    gym_id: int
+    amount: float
+    description: str
+    category: str
+    date: date
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class MonthlyBreakdown(BaseModel):
     month: str
     income: float
@@ -42,6 +62,8 @@ class RevenueBySource(BaseModel):
 
 class FinanceSummary(BaseModel):
     total_income_ytd: float = 0
+    total_expenses: float = 0
+    net_income: float = 0
     outstanding_revenue: float = 0
     active_members: int = 0
     monthly_breakdown: list[MonthlyBreakdown] = []

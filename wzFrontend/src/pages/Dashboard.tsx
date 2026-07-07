@@ -5,6 +5,7 @@ import { FinanceView } from "../components/FinanceView";
 import { MemberListView } from "../components/MemberListView";
 import { AnalyticsView } from "../components/AnalyticsView";
 import { PlansAndTrainersView } from "../components/PlansAndTrainersView";
+import { ExpenseLogView } from "../components/ExpenseLogView";
 import { useGym } from "../contexts/GymContext";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { MobileDashboard } from "../components/mobile/MobileDashboard";
@@ -36,6 +37,7 @@ export const Dashboard: FC = () => {
                         {view === "finances" && "Financial Reporting"}
                         {view === "members" && "Member Management"}
                         {view === "plans" && "Plans & Trainers"}
+                        {view === "expenses" && "Expense Log"}
                         {view === "analytics" && "Revenue Analytics"}
                     </div>
                     <div className="flex items-center gap-4">
@@ -55,6 +57,7 @@ export const Dashboard: FC = () => {
                 {view === "finances" && <FinanceView />}
                 {view === "members" && <MemberListView gymId={activeGymId} />}
                 {view === "plans" && <PlansAndTrainersView />}
+                {view === "expenses" && <ExpenseLogView />}
                 {view === "analytics" && <AnalyticsView />}
             </main>
         </div>
