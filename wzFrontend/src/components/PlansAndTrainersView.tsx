@@ -15,7 +15,6 @@ interface Trainer {
     email: string | null;
     phone: string | null;
     specialization: string | null;
-    charge_per_session: number;
     is_active: boolean;
 }
 
@@ -29,13 +28,17 @@ export const PlansAndTrainersView: FC = () => {
     const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
     const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
 
-    const [planForm, setPlanForm] = useState({ name: "", price: "", duration_days: "30", is_active: true });
+    const [planForm, setPlanForm] = useState({
+        name: "",
+        price: "",
+        duration_days: "30",
+        is_active: true,
+    });
     const [trainerForm, setTrainerForm] = useState({
         name: "",
         email: "",
         phone: "",
         specialization: "",
-        charge_per_session: "",
     });
 
     const fetchPlans = async () => {
@@ -63,20 +66,34 @@ export const PlansAndTrainersView: FC = () => {
 
     const openAddPlan = () => {
         setEditingPlan(null);
-        setPlanForm({ name: "", price: "", duration_days: "30", is_active: true });
+        setPlanForm({
+            name: "",
+            price: "",
+            duration_days: "30",
+            is_active: true,
+        });
         setShowPlanModal(true);
     };
 
     const openEditPlan = (p: Plan) => {
         setEditingPlan(p);
-        setPlanForm({ name: p.name, price: String(p.price), duration_days: String(p.duration_days), is_active: p.is_active });
+        setPlanForm({
+            name: p.name,
+            price: String(p.price),
+            duration_days: String(p.duration_days),
+            is_active: p.is_active,
+        });
         setShowPlanModal(true);
     };
 
     const handlePlanSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const payload: Record<string, unknown> = { name: planForm.name, price: parseFloat(planForm.price), duration_days: parseInt(planForm.duration_days) };
+            const payload: Record<string, unknown> = {
+                name: planForm.name,
+                price: parseFloat(planForm.price),
+                duration_days: parseInt(planForm.duration_days),
+            };
             if (editingPlan) {
                 payload.is_active = planForm.is_active;
                 await api.put(`/plans/${editingPlan.plan_id}`, payload);
@@ -101,7 +118,7 @@ export const PlansAndTrainersView: FC = () => {
 
     const openAddTrainer = () => {
         setEditingTrainer(null);
-        setTrainerForm({ name: "", email: "", phone: "", specialization: "", charge_per_session: "" });
+        setTrainerForm({ name: "", email: "", phone: "", specialization: "" });
         setShowTrainerModal(true);
     };
 
@@ -112,23 +129,24 @@ export const PlansAndTrainersView: FC = () => {
             email: t.email || "",
             phone: t.phone || "",
             specialization: t.specialization || "",
-            charge_per_session: String(t.charge_per_session),
         });
         setShowTrainerModal(true);
     };
 
-    const handleTrainerSubmit = async (e: React.FormEvent) => {
+    const handleTrainerSubmit = async (e: React.SubmitEvent) => {
         e.preventDefault();
         try {
             const payload = {
                 name: trainerForm.name,
-                email: trainerForm.email || null,
-                phone: trainerForm.phone || null,
-                specialization: trainerForm.specialization || null,
-                charge_per_session: parseFloat(trainerForm.charge_per_session) || 0,
+                email: trainerForm.email,
+                phone: trainerForm.phone,
+                specialization: trainerForm.specialization,
             };
             if (editingTrainer) {
-                await api.put(`/trainers/${editingTrainer.trainer_id}`, payload);
+                await api.put(
+                    `/trainers/${editingTrainer.trainer_id}`,
+                    payload,
+                );
             } else {
                 await api.post("/trainers/", payload);
             }
@@ -151,7 +169,9 @@ export const PlansAndTrainersView: FC = () => {
     return (
         <div className="p-8 max-w-[1200px] w-full mx-auto">
             <div className="mb-8">
-                <h1 className="text-[32px] mb-2 leading-tight">Plans & Trainers</h1>
+                <h1 className="text-[32px] mb-2 leading-tight">
+                    Plans & Trainers
+                </h1>
                 <p className="text-brand-muted">
                     Manage membership plans, pricing, and trainer details.
                 </p>
@@ -213,20 +233,41 @@ export const PlansAndTrainersView: FC = () => {
                             </thead>
                             <tbody>
                                 {plans.map((p) => (
-                                    <tr key={p.plan_id} className="hover:bg-[oklch(99%_0.002_240)] transition-colors">
-                                        <td className="p-4 border-b border-brand-border font-semibold">{p.name}</td>
-                                        <td className="p-4 border-b border-brand-border mono">₹{p.price.toLocaleString()}</td>
-                                        <td className="p-4 border-b border-brand-border text-brand-muted">{p.duration_days} Days</td>
+                                    <tr
+                                        key={p.plan_id}
+                                        className="hover:bg-[oklch(99%_0.002_240)] transition-colors"
+                                    >
+                                        <td className="p-4 border-b border-brand-border font-semibold">
+                                            {p.name}
+                                        </td>
+                                        <td className="p-4 border-b border-brand-border mono">
+                                            ₹{p.price.toLocaleString()}
+                                        </td>
+                                        <td className="p-4 border-b border-brand-border text-brand-muted">
+                                            {p.duration_days} Days
+                                        </td>
                                         <td className="p-4 border-b border-brand-border">
-                                            <span className={`status-pill ${p.is_active ? "bg-status-active-bg text-status-active-fg" : "bg-status-canceled-bg text-status-canceled-fg"}`}>
-                                                {p.is_active ? "Active" : "Inactive"}
+                                            <span
+                                                className={`status-pill ${p.is_active ? "bg-status-active-bg text-status-active-fg" : "bg-status-canceled-bg text-status-canceled-fg"}`}
+                                            >
+                                                {p.is_active
+                                                    ? "Active"
+                                                    : "Inactive"}
                                             </span>
                                         </td>
                                         <td className="p-4 border-b border-brand-border flex gap-2">
-                                            <button onClick={() => openEditPlan(p)} className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[12px]">
+                                            <button
+                                                onClick={() => openEditPlan(p)}
+                                                className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[12px]"
+                                            >
                                                 Edit
                                             </button>
-                                            <button onClick={() => handleDeletePlan(p.plan_id)} className="px-2 py-1 rounded font-semibold border border-red-200 text-red-500 transition-all duration-150 hover:bg-red-50 text-[12px]">
+                                            <button
+                                                onClick={() =>
+                                                    handleDeletePlan(p.plan_id)
+                                                }
+                                                className="px-2 py-1 rounded font-semibold border border-red-200 text-red-500 transition-all duration-150 hover:bg-red-50 text-[12px]"
+                                            >
                                                 Delete
                                             </button>
                                         </td>
@@ -252,25 +293,52 @@ export const PlansAndTrainersView: FC = () => {
                         <table className="w-full border-collapse text-left">
                             <thead>
                                 <tr>
-                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">Name</th>
-                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">Email</th>
-                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">Specialization</th>
-                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">Charge/Session</th>
-                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">Actions</th>
+                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
+                                        Name
+                                    </th>
+                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
+                                        Email
+                                    </th>
+                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
+                                        Specialization
+                                    </th>
+                                    <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {trainers.map((t) => (
-                                    <tr key={t.trainer_id} className="hover:bg-[oklch(99%_0.002_240)] transition-colors">
-                                        <td className="p-4 border-b border-brand-border font-semibold">{t.name}</td>
-                                        <td className="p-4 border-b border-brand-border text-brand-muted">{t.email || "—"}</td>
-                                        <td className="p-4 border-b border-brand-border">{t.specialization || "—"}</td>
-                                        <td className="p-4 border-b border-brand-border mono">₹{t.charge_per_session.toLocaleString()}</td>
+                                    <tr
+                                        key={t.trainer_id}
+                                        className="hover:bg-[oklch(99%_0.002_240)] transition-colors"
+                                    >
+                                        <td className="p-4 border-b border-brand-border font-semibold">
+                                            {t.name}
+                                        </td>
+                                        <td className="p-4 border-b border-brand-border text-brand-muted">
+                                            {t.email || "—"}
+                                        </td>
+                                        <td className="p-4 border-b border-brand-border">
+                                            {t.specialization || "—"}
+                                        </td>
                                         <td className="p-4 border-b border-brand-border flex gap-2">
-                                            <button onClick={() => openEditTrainer(t)} className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[12px]">
+                                            <button
+                                                onClick={() =>
+                                                    openEditTrainer(t)
+                                                }
+                                                className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[12px]"
+                                            >
                                                 Edit
                                             </button>
-                                            <button onClick={() => handleDeleteTrainer(t.trainer_id)} className="px-2 py-1 rounded font-semibold border border-red-200 text-red-500 transition-all duration-150 hover:bg-red-50 text-[12px]">
+                                            <button
+                                                onClick={() =>
+                                                    handleDeleteTrainer(
+                                                        t.trainer_id,
+                                                    )
+                                                }
+                                                className="px-2 py-1 rounded font-semibold border border-red-200 text-red-500 transition-all duration-150 hover:bg-red-50 text-[12px]"
+                                            >
                                                 Delete
                                             </button>
                                         </td>
@@ -285,21 +353,38 @@ export const PlansAndTrainersView: FC = () => {
             {/* Plan Modal */}
             {showPlanModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-brand-surface p-8 rounded-lg border border-brand-border w-full max-w-[400px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        <h2 className="text-2xl mb-6">{editingPlan ? "Edit Plan" : "Add New Plan"}</h2>
-                        <form onSubmit={handlePlanSubmit} className="flex flex-col gap-4">
+                    <div
+                        className="bg-brand-surface p-8 rounded-lg border border-brand-border w-full max-w-[400px] shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 className="text-2xl mb-6">
+                            {editingPlan ? "Edit Plan" : "Add New Plan"}
+                        </h2>
+                        <form
+                            onSubmit={handlePlanSubmit}
+                            className="flex flex-col gap-4"
+                        >
                             <div>
-                                <label className="block text-sm font-medium mb-1">Plan Name</label>
+                                <label className="block text-sm font-medium mb-1">
+                                    Plan Name
+                                </label>
                                 <input
                                     required
                                     type="text"
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={planForm.name}
-                                    onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                                    onChange={(e) =>
+                                        setPlanForm({
+                                            ...planForm,
+                                            name: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Price (₹)</label>
+                                <label className="block text-sm font-medium mb-1">
+                                    Price (₹)
+                                </label>
                                 <input
                                     required
                                     type="number"
@@ -307,37 +392,66 @@ export const PlansAndTrainersView: FC = () => {
                                     min="0"
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={planForm.price}
-                                    onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
+                                    onChange={(e) =>
+                                        setPlanForm({
+                                            ...planForm,
+                                            price: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Duration (Days)</label>
-                                <input 
-                                    required 
-                                    type="number" 
+                                <label className="block text-sm font-medium mb-1">
+                                    Duration (Days)
+                                </label>
+                                <input
+                                    required
+                                    type="number"
                                     min="1"
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={planForm.duration_days}
-                                    onChange={(e) => setPlanForm({ ...planForm, duration_days: e.target.value })}
+                                    onChange={(e) =>
+                                        setPlanForm({
+                                            ...planForm,
+                                            duration_days: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             {editingPlan && (
                                 <div className="flex items-center gap-2 mt-2">
-                                    <input 
-                                        type="checkbox" 
-                                        id="desktop-p-active" 
-                                        checked={planForm.is_active} 
-                                        onChange={e => setPlanForm({...planForm, is_active: e.target.checked})} 
-                                        className="w-4 h-4 rounded border-brand-border" 
+                                    <input
+                                        type="checkbox"
+                                        id="desktop-p-active"
+                                        checked={planForm.is_active}
+                                        onChange={(e) =>
+                                            setPlanForm({
+                                                ...planForm,
+                                                is_active: e.target.checked,
+                                            })
+                                        }
+                                        className="w-4 h-4 rounded border-brand-border"
                                     />
-                                    <label htmlFor="desktop-p-active" className="text-sm font-semibold">Active Plan</label>
+                                    <label
+                                        htmlFor="desktop-p-active"
+                                        className="text-sm font-semibold"
+                                    >
+                                        Active Plan
+                                    </label>
                                 </div>
                             )}
                             <div className="flex gap-3 mt-4">
-                                <button type="button" onClick={() => setShowPlanModal(false)} className="flex-1 px-4 py-2 rounded font-semibold border border-brand-border hover:bg-brand-bg">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPlanModal(false)}
+                                    className="flex-1 px-4 py-2 rounded font-semibold border border-brand-border hover:bg-brand-bg"
+                                >
                                     Cancel
                                 </button>
-                                <button type="submit" className="flex-1 px-4 py-2 rounded font-semibold bg-brand-accent text-white hover:opacity-90">
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-2 rounded font-semibold bg-brand-accent text-white hover:opacity-90"
+                                >
                                     {editingPlan ? "Update Plan" : "Save Plan"}
                                 </button>
                             </div>
@@ -349,50 +463,99 @@ export const PlansAndTrainersView: FC = () => {
             {/* Trainer Modal */}
             {showTrainerModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-brand-surface p-8 rounded-lg border border-brand-border w-full max-w-[400px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        <h2 className="text-2xl mb-6">{editingTrainer ? "Edit Trainer" : "Add New Trainer"}</h2>
-                        <form onSubmit={handleTrainerSubmit} className="flex flex-col gap-4">
+                    <div
+                        className="bg-brand-surface p-8 rounded-lg border border-brand-border w-full max-w-[400px] shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 className="text-2xl mb-6">
+                            {editingTrainer
+                                ? "Edit Trainer"
+                                : "Add New Trainer"}
+                        </h2>
+                        <form
+                            onSubmit={handleTrainerSubmit}
+                            className="flex flex-col gap-4"
+                        >
                             <div>
-                                <label className="block text-sm font-medium mb-1">Name</label>
-                                <input required type="text" className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                <label className="block text-sm font-medium mb-1">
+                                    Name
+                                </label>
+                                <input
+                                    required
+                                    type="text"
+                                    className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={trainerForm.name}
-                                    onChange={(e) => setTrainerForm({ ...trainerForm, name: e.target.value })}
+                                    onChange={(e) =>
+                                        setTrainerForm({
+                                            ...trainerForm,
+                                            name: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Email</label>
-                                <input type="email" className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                <label className="block text-sm font-medium mb-1">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={trainerForm.email}
-                                    onChange={(e) => setTrainerForm({ ...trainerForm, email: e.target.value })}
+                                    onChange={(e) =>
+                                        setTrainerForm({
+                                            ...trainerForm,
+                                            email: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Phone</label>
-                                <input type="text" className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                <label className="block text-sm font-medium mb-1">
+                                    Phone
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={trainerForm.phone}
-                                    onChange={(e) => setTrainerForm({ ...trainerForm, phone: e.target.value })}
+                                    onChange={(e) =>
+                                        setTrainerForm({
+                                            ...trainerForm,
+                                            phone: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Specialization</label>
-                                <input type="text" className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                <label className="block text-sm font-medium mb-1">
+                                    Specialization
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={trainerForm.specialization}
-                                    onChange={(e) => setTrainerForm({ ...trainerForm, specialization: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Charge Per Session (₹)</label>
-                                <input required type="number" step="0.01" min="0" className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
-                                    value={trainerForm.charge_per_session}
-                                    onChange={(e) => setTrainerForm({ ...trainerForm, charge_per_session: e.target.value })}
+                                    onChange={(e) =>
+                                        setTrainerForm({
+                                            ...trainerForm,
+                                            specialization: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             <div className="flex gap-3 mt-4">
-                                <button type="button" onClick={() => setShowTrainerModal(false)} className="flex-1 px-4 py-2 rounded font-semibold border border-brand-border hover:bg-brand-bg">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTrainerModal(false)}
+                                    className="flex-1 px-4 py-2 rounded font-semibold border border-brand-border hover:bg-brand-bg"
+                                >
                                     Cancel
                                 </button>
-                                <button type="submit" className="flex-1 px-4 py-2 rounded font-semibold bg-brand-accent text-white hover:opacity-90">
-                                    {editingTrainer ? "Update Trainer" : "Save Trainer"}
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-2 rounded font-semibold bg-brand-accent text-white hover:opacity-90"
+                                >
+                                    {editingTrainer
+                                        ? "Update Trainer"
+                                        : "Save Trainer"}
                                 </button>
                             </div>
                         </form>

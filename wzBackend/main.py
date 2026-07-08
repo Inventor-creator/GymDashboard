@@ -17,7 +17,7 @@ from Routes.financeRoutes import router as finance_router
 load_dotenv()
 
 # Create tables (In production, use Alembic)
-models.Base.metadata.create_all(bind=engine)
+
 
 # Seed default plans for all existing gyms
 from sqlalchemy.orm import Session
@@ -90,4 +90,5 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
+    models.Base.metadata.create_all(bind=engine)
     uvicorn.run(app, host="0.0.0.0", port=8080, reload=True)

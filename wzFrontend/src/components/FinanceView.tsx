@@ -262,17 +262,6 @@ export const FinanceView: FC = () => {
                         </div>
                         <div className="bg-brand-surface border border-brand-border p-6 rounded">
                             <div className="text-brand-muted text-[12px] uppercase tracking-[0.06em] mb-2">
-                                Active Members
-                            </div>
-                            <div className="text-[28px] font-bold mb-1 mono">
-                                {summary.active_members}
-                            </div>
-                            <div className="text-[12px] text-trend-up">
-                                +{summary.new_signups_this_month} this month
-                            </div>
-                        </div>
-                        <div className="bg-brand-surface border border-brand-border p-6 rounded">
-                            <div className="text-brand-muted text-[12px] uppercase tracking-[0.06em] mb-2">
                                 Total Expenses (YTD)
                             </div>
                             <div className="text-[28px] font-bold mb-1 mono text-red-500">
@@ -291,6 +280,17 @@ export const FinanceView: FC = () => {
                             </div>
                             <div className="text-[12px] text-trend-up">
                                 income − expenses
+                            </div>
+                        </div>
+                        <div className="bg-brand-surface border border-brand-border p-6 rounded">
+                            <div className="text-brand-muted text-[12px] uppercase tracking-[0.06em] mb-2">
+                                Active Members
+                            </div>
+                            <div className="text-[28px] font-bold mb-1 mono">
+                                {summary.active_members}
+                            </div>
+                            <div className="text-[12px] text-trend-up">
+                                +{summary.new_signups_this_month} this month
                             </div>
                         </div>
                     </div>
@@ -389,9 +389,11 @@ export const FinanceView: FC = () => {
                 </div>
             </div>
 
-            <div className="bg-brand-surface border border-brand-border rounded overflow-hidden mb-8">
+            <div
+                className={`bg-brand-surface border border-brand-border rounded ${transactions.length > 10 ? "overflow-y-auto max-h-[600px]" : "overflow-hidden"}`}
+            >
                 <table className="w-full border-collapse text-left">
-                    <thead>
+                    <thead className="sticky top-0 z-5">
                         <tr>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
                                 Member
@@ -459,7 +461,9 @@ export const FinanceView: FC = () => {
                 </table>
             </div>
 
-            <div className="bg-brand-surface border border-brand-border rounded overflow-hidden">
+            <div
+                className={`bg-brand-surface border border-brand-border rounded mt-5 ${outstanding.length > 5 ? "overflow-y-auto max-h-[600px]" : "overflow-hidden"}`}
+            >
                 <div className="bg-brand-bg px-4 py-3 border-b border-brand-border flex justify-between items-center">
                     <h3 className="text-[14px] font-semibold">
                         Outstanding Debts

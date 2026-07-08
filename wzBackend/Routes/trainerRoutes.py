@@ -17,18 +17,18 @@ def get_trainers(db: Session = Depends(get_db), x_gym_id: Optional[int] = Header
 
 
 @router.post("/", response_model=TrainerResponse)
-def create_trainer(trainer: TrainerCreate, db: Session = Depends(get_db)):
-    db_gym = db.query(Gym).filter(Gym.gym_id == trainer.gym_id).first()
+def create_trainer(trainer: TrainerCreate, db: Session = Depends(get_db), x_gym_id: Optional[int] = Header(None)):
+
+    db_gym = db.query(Gym).filter(Gym.gym_id == x_gym_id).first()
     if not db_gym:
         raise HTTPException(status_code=404, detail="Gym not found")
 
     db_trainer = Trainer(
-        gym_id=trainer.gym_id,
+        gym_id=x_gym_id,
         name=trainer.name,
         email=trainer.email,
         phone=trainer.phone,
         specialization=trainer.specialization,
-        charge_per_session=trainer.charge_per_session,
     )
     db.add(db_trainer)
     db.commit()
@@ -42,7 +42,7 @@ def update_trainer(trainer_id: int, trainer_update: TrainerUpdate, db: Session =
     if not db_trainer:
         raise HTTPException(status_code=404, detail="Trainer not found")
 
-    update_data = trainer_update.dict(exclude_unset=True)
+    update_data = trainer_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_trainer, key, value)
 

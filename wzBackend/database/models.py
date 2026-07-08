@@ -62,6 +62,7 @@ class MemberGym(Base):
     plan_price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     has_personal_training: Mapped[bool] = mapped_column(Boolean, default=False)
     personal_training_cost: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    assigned_trainer_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("trainers.trainer_id"), nullable=True)
     total_owed: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     paid: Mapped[bool] = mapped_column(Boolean, default=False)
     payment_method: Mapped[str] = mapped_column(String(10), default="cash")
@@ -121,7 +122,6 @@ class Trainer(Base):
     email: Mapped[str | None] = mapped_column(String, nullable=True)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     specialization: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    charge_per_session: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     gym: Mapped["Gym"] = Relationship("Gym", back_populates="trainers")

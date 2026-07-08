@@ -11,6 +11,8 @@ interface Member {
     joining_date: string;
     has_personal_training: boolean;
     personal_training_cost: number;
+    assigned_trainer_id: number | null;
+    assigned_trainer_name: string | null;
     total_owed: number;
     paid: boolean;
     payment_method: string;
@@ -24,10 +26,17 @@ interface Plan {
     price: number;
 }
 
+interface Trainer {
+    trainer_id: number;
+    name: string;
+    specialization: string | null;
+}
+
 export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
     const [search, setSearch] = useState("");
     const [members, setMembers] = useState<Member[]>([]);
     const [plans, setPlans] = useState<Plan[]>([]);
+    const [trainers, setTrainers] = useState<Trainer[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [isCustomPlan, setIsCustomPlan] = useState(false);
@@ -39,6 +48,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         plan_price: 0,
         has_personal_training: false,
         personal_training_cost: 0,
+        assigned_trainer_id: "",
         initial_paid_amount: "",
         payment_method: "cash",
         payment_remark: "",
@@ -65,9 +75,19 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         }
     };
 
+    const fetchTrainers = async () => {
+        try {
+            const response = await api.get("/trainers/");
+            setTrainers(response.data);
+        } catch {
+            console.error("Error fetching trainers");
+        }
+    };
+
     useEffect(() => {
         fetchMembers();
         fetchPlans();
+        fetchTrainers();
     }, [gymId]);
 
     useEffect(() => {
@@ -91,6 +111,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             plan_price: plans.find((p) => p.name === "monthly")?.price || 0,
             has_personal_training: false,
             personal_training_cost: 0,
+            assigned_trainer_id: "",
             initial_paid_amount: "",
             payment_method: "cash",
             payment_remark: "",
@@ -113,6 +134,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             plan_price: member.plan_price,
             has_personal_training: member.has_personal_training,
             personal_training_cost: member.personal_training_cost,
+            assigned_trainer_id: String(member.assigned_trainer_id ?? ""),
             initial_paid_amount: "",
             payment_method: member.payment_method,
             payment_remark: member.payment_remark || "",
@@ -135,6 +157,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             plan_price: member.plan_price,
             has_personal_training: member.has_personal_training,
             personal_training_cost: member.personal_training_cost,
+            assigned_trainer_id: String(member.assigned_trainer_id ?? ""),
             initial_paid_amount: "",
             payment_method: member.payment_method,
             payment_remark: member.payment_remark || "",
@@ -165,16 +188,20 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const trainerId = memberForm.assigned_trainer_id
+                ? parseInt(memberForm.assigned_trainer_id)
+                : null;
             const payload: Record<string, unknown> = {
                 name: memberForm.name,
                 email: memberForm.email,
                 phone_number: memberForm.phone_number,
                 plan: memberForm.plan,
                 plan_price: memberForm.plan_price,
-                has_personal_training: memberForm.has_personal_training,
+                has_personal_training: !!trainerId || memberForm.has_personal_training,
                 personal_training_cost: memberForm.has_personal_training
                     ? memberForm.personal_training_cost
                     : 0,
+                assigned_trainer_id: trainerId,
                 initial_paid_amount:
                     parseFloat(memberForm.initial_paid_amount) || 0,
                 payment_method: memberForm.payment_method,
@@ -239,7 +266,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                         Member Directory
                     </h1>
                     <p className="text-brand-muted">
-                        Manage your gym's {members.length} active members.
+                        Manage your gym's{" "}
+                        {members.filter((m) => m.is_active).length} active
+                        members.
                     </p>
                 </div>
                 <div className="flex gap-3">
@@ -435,52 +464,34 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     </div>
                                 </>
                             )}
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="has-pt"
-                                    className="rounded border-brand-border"
-                                    checked={memberForm.has_personal_training}
+                            <div>
+                                <label className="block text-sm font-medium mb-1">
+                                    Assigned Trainer
+                                </label>
+                                <select
+                                    className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                    value={memberForm.assigned_trainer_id}
                                     onChange={(e) =>
                                         setMemberForm({
                                             ...memberForm,
-                                            has_personal_training:
-                                                e.target.checked,
+                                            assigned_trainer_id: e.target.value,
                                         })
                                     }
-                                />
-                                <label
-                                    htmlFor="has-pt"
-                                    className="text-sm font-medium"
                                 >
-                                    Has Personal Training
-                                </label>
+                                    <option value="">None</option>
+                                    {trainers.map((t) => (
+                                        <option
+                                            key={t.trainer_id}
+                                            value={t.trainer_id}
+                                        >
+                                            {t.name}
+                                            {t.specialization
+                                                ? ` (${t.specialization})`
+                                                : ""}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
-                            {memberForm.has_personal_training && (
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">
-                                        Personal Training Cost (₹)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
-                                        value={
-                                            memberForm.personal_training_cost
-                                        }
-                                        onChange={(e) =>
-                                            setMemberForm({
-                                                ...memberForm,
-                                                personal_training_cost:
-                                                    parseFloat(
-                                                        e.target.value,
-                                                    ) || 0,
-                                            })
-                                        }
-                                    />
-                                </div>
-                            )}
                             {!editingMember && (
                                 <>
                                     <div className="flex flex-col gap-1">
@@ -573,9 +584,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                 </div>
             )}
 
-            <div className="bg-brand-surface border border-brand-border rounded overflow-hidden">
+            <div className={`bg-brand-surface border border-brand-border rounded ${filteredMembers.length > 10 ? "overflow-y-auto max-h-[600px]" : "overflow-hidden"}`}>
                 <table className="w-full border-collapse text-left">
-                    <thead>
+                    <thead className="sticky top-0 z-5">
                         <tr>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
                                 Name
@@ -587,7 +598,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                 Join Date
                             </th>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
-                                PT
+                                Trainer
                             </th>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
                                 Owed
@@ -626,12 +637,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     ).toLocaleDateString()}
                                 </td>
                                 <td className="p-4 border-b border-brand-border">
-                                    <input
-                                        type="checkbox"
-                                        checked={member.has_personal_training}
-                                        readOnly
-                                        className="rounded border-brand-border opacity-60"
-                                    />
+                                    {member.assigned_trainer_name || (
+                                        <span className="text-brand-muted">—</span>
+                                    )}
                                 </td>
                                 <td className="p-4 border-b border-brand-border mono font-semibold">
                                     ₹{member.total_owed.toLocaleString()}

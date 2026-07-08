@@ -7,20 +7,13 @@ class TrainerBase(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     specialization: Optional[str] = None
-    charge_per_session: float = 0
 
 
 class TrainerCreate(TrainerBase):
-    gym_id: int
+    pass
 
-
-class TrainerUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    specialization: Optional[str] = None
-    charge_per_session: Optional[float] = None
-    is_active: Optional[bool] = None
+class TrainerUpdate(TrainerBase):
+    pass
 
 
 class TrainerResponse(TrainerBase):
