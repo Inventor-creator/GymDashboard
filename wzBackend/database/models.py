@@ -63,6 +63,8 @@ class MemberGym(Base):
     has_personal_training: Mapped[bool] = mapped_column(Boolean, default=False)
     personal_training_cost: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     assigned_trainer_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("trainers.trainer_id"), nullable=True)
+    assigned_trainer_plan_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("trainer_plans.plan_id"), nullable=True)
+    next_trainer_billing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     total_owed: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     paid: Mapped[bool] = mapped_column(Boolean, default=False)
     payment_method: Mapped[str] = mapped_column(String(10), default="cash")
@@ -125,3 +127,17 @@ class Trainer(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     gym: Mapped["Gym"] = Relationship("Gym", back_populates="trainers")
+    plans: Mapped[list["TrainerPlan"]] = Relationship("TrainerPlan", back_populates="trainer")
+
+
+class TrainerPlan(Base):
+    __tablename__ = "trainer_plans"
+
+    plan_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    trainer_id: Mapped[int] = mapped_column(Integer, ForeignKey("trainers.trainer_id"), index=True)
+    name: Mapped[str] = mapped_column(String(50))
+    price: Mapped[float] = mapped_column(Numeric(10, 2))
+    duration_days: Mapped[int] = mapped_column(Integer, default=30)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    trainer: Mapped["Trainer"] = Relationship("Trainer", back_populates="plans")

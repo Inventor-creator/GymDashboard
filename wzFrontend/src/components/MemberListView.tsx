@@ -13,6 +13,8 @@ interface Member {
     personal_training_cost: number;
     assigned_trainer_id: number | null;
     assigned_trainer_name: string | null;
+    assigned_trainer_plan_id: number | null;
+    assigned_trainer_plan_name: string | null;
     total_owed: number;
     paid: boolean;
     payment_method: string;
@@ -30,6 +32,12 @@ interface Trainer {
     trainer_id: number;
     name: string;
     specialization: string | null;
+    plans: {
+        plan_id: number;
+        name: string;
+        price: number;
+        duration_days: number;
+    }[];
 }
 
 export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
@@ -49,6 +57,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         has_personal_training: false,
         personal_training_cost: 0,
         assigned_trainer_id: "",
+        assigned_trainer_name: "",
+        assigned_trainer_plan_id: "",
+        assigned_trainer_plan_name: "",
         initial_paid_amount: "",
         payment_method: "cash",
         payment_remark: "",
@@ -112,6 +123,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             has_personal_training: false,
             personal_training_cost: 0,
             assigned_trainer_id: "",
+            assigned_trainer_plan_id: "",
+            assigned_trainer_plan_name: "",
+            assigned_trainer_name: "",
             initial_paid_amount: "",
             payment_method: "cash",
             payment_remark: "",
@@ -135,7 +149,12 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             has_personal_training: member.has_personal_training,
             personal_training_cost: member.personal_training_cost,
             assigned_trainer_id: String(member.assigned_trainer_id ?? ""),
+            assigned_trainer_plan_id: String(
+                member.assigned_trainer_plan_id ?? "",
+            ),
             initial_paid_amount: "",
+            assigned_trainer_name: member.assigned_trainer_name ?? "",
+            assigned_trainer_plan_name: member.assigned_trainer_plan_name ?? "",
             payment_method: member.payment_method,
             payment_remark: member.payment_remark || "",
             custom_plan_name: isCustom ? member.plan : "",
@@ -158,7 +177,12 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
             has_personal_training: member.has_personal_training,
             personal_training_cost: member.personal_training_cost,
             assigned_trainer_id: String(member.assigned_trainer_id ?? ""),
+            assigned_trainer_plan_id: String(
+                member.assigned_trainer_plan_id ?? "",
+            ),
             initial_paid_amount: "",
+            assigned_trainer_name: member.assigned_trainer_name ?? "",
+            assigned_trainer_plan_name: member.assigned_trainer_plan_name ?? "",
             payment_method: member.payment_method,
             payment_remark: member.payment_remark || "",
             custom_plan_name: isCustom ? member.plan : "",
@@ -197,11 +221,29 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                 phone_number: memberForm.phone_number,
                 plan: memberForm.plan,
                 plan_price: memberForm.plan_price,
-                has_personal_training: !!trainerId || memberForm.has_personal_training,
-                personal_training_cost: memberForm.has_personal_training
-                    ? memberForm.personal_training_cost
-                    : 0,
+                has_personal_training:
+                    !!memberForm.assigned_trainer_plan_id ||
+                    (trainerId !== null && memberForm.has_personal_training),
+                personal_training_cost: (() => {
+                    if (memberForm.assigned_trainer_plan_id) {
+                        const selectedTrainer = trainers.find(
+                            (t) => t.trainer_id === trainerId,
+                        );
+                        const selectedPlan = selectedTrainer?.plans?.find(
+                            (p) =>
+                                p.plan_id ===
+                                parseInt(memberForm.assigned_trainer_plan_id),
+                        );
+                        return selectedPlan?.price ?? 0;
+                    }
+                    return memberForm.has_personal_training
+                        ? memberForm.personal_training_cost
+                        : 0;
+                })(),
                 assigned_trainer_id: trainerId,
+                assigned_trainer_plan_id: memberForm.assigned_trainer_plan_id
+                    ? parseInt(memberForm.assigned_trainer_plan_id)
+                    : null,
                 initial_paid_amount:
                     parseFloat(memberForm.initial_paid_amount) || 0,
                 payment_method: memberForm.payment_method,
@@ -474,11 +516,12 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     onChange={(e) =>
                                         setMemberForm({
                                             ...memberForm,
-                                            assigned_trainer_id: e.target.value,
-                                        })
+                                assigned_trainer_id: e.target.value,
+                                assigned_trainer_plan_id: "",
+                            })
                                     }
                                 >
-                                    <option value="">None</option>
+                                    <option value="">Select a trainer</option>
                                     {trainers.map((t) => (
                                         <option
                                             key={t.trainer_id}
@@ -492,6 +535,56 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     ))}
                                 </select>
                             </div>
+                            {memberForm.assigned_trainer_id &&
+                                (() => {
+                                    const selectedTrainer = trainers.find(
+                                        (t) =>
+                                            t.trainer_id ===
+                                            parseInt(
+                                                memberForm.assigned_trainer_id,
+                                            ),
+                                    );
+                                    return selectedTrainer &&
+                                        selectedTrainer.plans &&
+                                        selectedTrainer.plans.length > 0 ? (
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">
+                                                Trainer Plan
+                                            </label>
+                                            <select
+                                                className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                                value={
+                                                    memberForm.assigned_trainer_plan_id
+                                                }
+                                                onChange={(e) =>
+                                                    setMemberForm({
+                                                        ...memberForm,
+                                                        assigned_trainer_plan_id:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            >
+                                                {selectedTrainer.plans.map(
+                                                    (tp) => (
+                                                        <option
+                                                            key={tp.plan_id}
+                                                            value={tp.plan_id}
+                                                        >
+                                                            {tp.name} — ₹
+                                                            {tp.price.toLocaleString()}{" "}
+                                                            / {tp.duration_days}
+                                                            d
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                        </div>
+                                    ) : selectedTrainer ? (
+                                        <div className="text-[12px] text-brand-muted italic">
+                                            No plans defined for this trainer
+                                        </div>
+                                    ) : null;
+                                })()}
                             {!editingMember && (
                                 <>
                                     <div className="flex flex-col gap-1">
@@ -584,7 +677,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                 </div>
             )}
 
-            <div className={`bg-brand-surface border border-brand-border rounded ${filteredMembers.length > 10 ? "overflow-y-auto max-h-[600px]" : "overflow-hidden"}`}>
+            <div
+                className={`bg-brand-surface border border-brand-border rounded ${filteredMembers.length > 10 ? "overflow-y-auto max-h-[600px]" : "overflow-hidden"}`}
+            >
                 <table className="w-full border-collapse text-left">
                     <thead className="sticky top-0 z-5">
                         <tr>
@@ -638,7 +733,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                 </td>
                                 <td className="p-4 border-b border-brand-border">
                                     {member.assigned_trainer_name || (
-                                        <span className="text-brand-muted">—</span>
+                                        <span className="text-brand-muted">
+                                            —
+                                        </span>
                                     )}
                                 </td>
                                 <td className="p-4 border-b border-brand-border mono font-semibold">

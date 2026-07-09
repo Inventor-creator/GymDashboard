@@ -23,6 +23,7 @@ class MemberCreate(MemberBase):
     custom_plan_price: Optional[float] = None
     custom_plan_duration: Optional[int] = None
     assigned_trainer_id: Optional[int] = None
+    assigned_trainer_plan_id: Optional[int] = None
 
 
 class MemberUpdate(BaseModel):
@@ -40,6 +41,10 @@ class MemberUpdate(BaseModel):
     custom_plan_price: Optional[float] = None
     custom_plan_duration: Optional[int] = None
     assigned_trainer_id: Optional[int] = None
+    assigned_trainer_name: Optional[str] = None
+    assigned_trainer_plan_name: Optional[str] = None
+    assigned_trainer_plan_id: Optional[int] = None
+
     is_active: Optional[bool] = None
 
 
@@ -49,6 +54,9 @@ class MemberResponse(MemberBase):
     next_billing_date: Optional[datetime] = None
     total_owed: float
     is_active: bool
+    assigned_trainer_id: Optional[int] = None
     assigned_trainer_name: Optional[str] = None
+    assigned_trainer_plan_name: Optional[str] = None
+    assigned_trainer_plan_id: Optional[int] = None
     class Config:
         from_attributes = True

@@ -7,8 +7,9 @@ from sqlalchemy import func, extract
 from typing import List, Optional
 from datetime import datetime, date
 from database import get_db
-from database.models import Transactions, Member, MemberGym, Gym, Plan, Expense
+from database.models import Transactions, Member, MemberGym, Gym, Plan, Expense, Trainer, TrainerPlan
 from datetime import timedelta
+from dateutil.relativedelta import relativedelta
 from schemas.FinanceSchemas import (
     FinanceSummary,
     MonthlyBreakdown,
@@ -211,6 +212,43 @@ def get_transactions(
     return output
 
 
+@router.delete("/transactions/{transaction_id}")
+def delete_transaction(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    x_gym_id: Optional[int] = Header(None),
+):
+    if not x_gym_id:
+        raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
+    tx = (
+        db.query(Transactions)
+        .filter(
+            Transactions.transaction_id == transaction_id,
+            Transactions.gym_id == x_gym_id,
+        )
+        .first()
+    )
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Reverse the payment effect on outstanding debt
+    mg = (
+        db.query(MemberGym)
+        .filter(
+            MemberGym.member_id == tx.member_id,
+            MemberGym.gym_id == x_gym_id,
+        )
+        .first()
+    )
+    if mg and tx.status == "paid":
+        mg.total_owed = float(mg.total_owed) + float(tx.amount)
+        mg.paid = False
+
+    db.delete(tx)
+    db.commit()
+    return {"detail": "Transaction deleted"}
+
+
 @router.get("/outstanding", response_model=List[OutstandingMember])
 def get_outstanding_members(
     db: Session = Depends(get_db),
@@ -396,20 +434,28 @@ def renew_billing(
         raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
         
     active_members = db.query(MemberGym).filter(MemberGym.gym_id == x_gym_id, MemberGym.is_active == True).all()
-    count = 0
+    plan_count = 0
+    trainer_count = 0
     today = date.today()
     for mg in active_members:
         if mg.next_billing_date and today >= mg.next_billing_date:
-            monthly_cost = float(mg.plan_price) + (float(mg.personal_training_cost) if mg.has_personal_training else 0)
-            if monthly_cost > 0:
-                mg.total_owed = float(mg.total_owed) + monthly_cost
+            if float(mg.plan_price) > 0:
+                mg.total_owed = float(mg.total_owed) + float(mg.plan_price)
                 mg.paid = False
                 
                 plan_db = db.query(Plan).filter(Plan.gym_id == x_gym_id, Plan.name == mg.plan).first()
                 duration = plan_db.duration_days if plan_db else 30
                 
                 mg.next_billing_date = mg.next_billing_date + timedelta(days=duration)
-                count += 1
+                plan_count += 1
+
+        if mg.next_trainer_billing_date and today >= mg.next_trainer_billing_date and mg.assigned_trainer_plan_id:
+            trainer_plan = db.query(TrainerPlan).filter(TrainerPlan.plan_id == mg.assigned_trainer_plan_id).first()
+            if trainer_plan and float(trainer_plan.price) > 0:
+                mg.total_owed = float(mg.total_owed) + float(trainer_plan.price)
+                mg.paid = False
+                mg.next_trainer_billing_date = mg.next_trainer_billing_date + timedelta(days=trainer_plan.duration_days)
+                trainer_count += 1
             
     db.commit()
-    return {"detail": f"Successfully renewed billing for {count} members."}
+    return {"detail": f"Renewed billing for {plan_count} plan(s) and {trainer_count} trainer(s)."}

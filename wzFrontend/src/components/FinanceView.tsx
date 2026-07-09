@@ -98,6 +98,18 @@ export const FinanceView: FC = () => {
         }
     };
 
+    const handleDeleteTransaction = async (transactionId: number) => {
+        if (!confirm("Delete this transaction?")) return;
+        try {
+            await api.delete(`/finances/transactions/${transactionId}`);
+            fetchTransactions();
+            fetchOutstanding();
+            fetchSummary();
+        } catch {
+            alert("Failed to delete transaction");
+        }
+    };
+
     useEffect(() => {
         fetchSummary();
         fetchOutstanding();
@@ -416,6 +428,7 @@ export const FinanceView: FC = () => {
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
                                 Remark
                             </th>
+                            <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -454,6 +467,20 @@ export const FinanceView: FC = () => {
                                 </td>
                                 <td className="p-4 border-b border-brand-border text-brand-muted">
                                     {tx.remark || "—"}
+                                </td>
+                                <td className="p-4 border-b border-brand-border">
+                                    {tx.transaction_id > 0 && (
+                                        <button
+                                            onClick={() =>
+                                                handleDeleteTransaction(
+                                                    tx.transaction_id,
+                                                )
+                                            }
+                                            className="text-[11px] text-red-500 hover:text-red-700 transition-colors"
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
