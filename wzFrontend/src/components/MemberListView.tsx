@@ -516,9 +516,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                     onChange={(e) =>
                                         setMemberForm({
                                             ...memberForm,
-                                assigned_trainer_id: e.target.value,
-                                assigned_trainer_plan_id: "",
-                            })
+                                            assigned_trainer_id: e.target.value,
+                                            assigned_trainer_plan_id: "",
+                                        })
                                     }
                                 >
                                     <option value="">Select a trainer</option>
