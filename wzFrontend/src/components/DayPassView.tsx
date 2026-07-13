@@ -1,9 +1,12 @@
 import { useState, useEffect, type FC } from "react";
 import api from "../api";
 
+const PLAN_OPTIONS = ["Day Pass", "HYROX"];
+
 interface DayPassTx {
     transaction_id: number;
     member_name: string;
+    plan_name: string;
     amount: number;
     date: string;
     payment_method: string;
@@ -13,10 +16,12 @@ interface DayPassTx {
 export const DayPassView: FC = () => {
     const [dayPasses, setDayPasses] = useState<DayPassTx[]>([]);
     const [showModal, setShowModal] = useState(false);
+    const [planFilter, setPlanFilter] = useState("");
     const [form, setForm] = useState({
         name: "",
         email: "",
         phone_number: "",
+        plan_name: "Day Pass",
         amount: "",
         payment_method: "cash",
         payment_remark: "",
@@ -24,7 +29,9 @@ export const DayPassView: FC = () => {
 
     const fetchDayPasses = async () => {
         try {
-            const res = await api.get("/day-passes/");
+            const params: Record<string, string> = {};
+            if (planFilter) params.plan = planFilter;
+            const res = await api.get("/day-passes/", { params });
             setDayPasses(res.data);
         } catch {
             console.error("Failed to fetch day passes");
@@ -33,7 +40,7 @@ export const DayPassView: FC = () => {
 
     useEffect(() => {
         fetchDayPasses();
-    }, []);
+    }, [planFilter]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,6 +49,7 @@ export const DayPassView: FC = () => {
                 name: form.name,
                 email: form.email,
                 phone_number: form.phone_number,
+                plan_name: form.plan_name,
                 amount: parseFloat(form.amount) || 0,
                 payment_method: form.payment_method,
                 payment_remark: form.payment_remark || null,
@@ -51,6 +59,7 @@ export const DayPassView: FC = () => {
                 name: "",
                 email: "",
                 phone_number: "",
+                plan_name: "Day Pass",
                 amount: "",
                 payment_method: "cash",
                 payment_remark: "",
@@ -62,7 +71,7 @@ export const DayPassView: FC = () => {
     };
 
     const handleDelete = async (transactionId: number) => {
-        if (!confirm("Delete this day pass transaction?")) return;
+        if (!confirm("Delete this transaction?")) return;
         try {
             await api.delete(`/finances/transactions/${transactionId}`);
             fetchDayPasses();
@@ -76,17 +85,17 @@ export const DayPassView: FC = () => {
             <div className="flex justify-between items-end mb-8">
                 <div>
                     <h1 className="text-[32px] mb-2 leading-tight">
-                        Day Passes
+                        Day Passes & HYROX
                     </h1>
                     <p className="text-brand-muted">
-                        Record and manage one-day pass charges.
+                        Record and manage one-time pass charges.
                     </p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
                     className="px-4 py-2 rounded font-semibold bg-brand-accent text-white border border-brand-accent transition-all duration-150 hover:opacity-90"
                 >
-                    + Add Day Pass
+                    + Add Entry
                 </button>
             </div>
 
@@ -96,7 +105,7 @@ export const DayPassView: FC = () => {
                         className="bg-brand-surface p-8 rounded-lg border border-brand-border w-full max-w-[480px] shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <h2 className="text-2xl mb-6">New Day Pass</h2>
+                        <h2 className="text-2xl mb-6">New Entry</h2>
                         <form
                             onSubmit={handleSubmit}
                             className="flex flex-col gap-4"
@@ -142,6 +151,22 @@ export const DayPassView: FC = () => {
                                         setForm({ ...form, phone_number: e.target.value })
                                     }
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">
+                                    Type
+                                </label>
+                                <select
+                                    className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
+                                    value={form.plan_name}
+                                    onChange={(e) =>
+                                        setForm({ ...form, plan_name: e.target.value })
+                                    }
+                                >
+                                    {PLAN_OPTIONS.map((p) => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1">
@@ -208,6 +233,22 @@ export const DayPassView: FC = () => {
                 </div>
             )}
 
+            <div className="flex items-center gap-4 mb-4">
+                <h2 className="text-[18px] leading-snug">Entries</h2>
+                <div className="ml-auto">
+                    <select
+                        className="px-3 py-2 rounded border border-brand-border bg-brand-surface text-[12px]"
+                        value={planFilter}
+                        onChange={(e) => setPlanFilter(e.target.value)}
+                    >
+                        <option value="">All</option>
+                        {PLAN_OPTIONS.map((p) => (
+                            <option key={p} value={p}>{p}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             <div
                 className={`bg-brand-surface border border-brand-border rounded ${dayPasses.length > 10 ? "overflow-y-auto max-h-[600px]" : "overflow-hidden"}`}
             >
@@ -216,6 +257,9 @@ export const DayPassView: FC = () => {
                         <tr>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
                                 Customer
+                            </th>
+                            <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
+                                Type
                             </th>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
                                 Amount
@@ -236,10 +280,10 @@ export const DayPassView: FC = () => {
                         {dayPasses.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={6}
+                                    colSpan={7}
                                     className="p-8 text-center text-brand-muted"
                                 >
-                                    No day pass transactions yet.
+                                    No entries yet.
                                 </td>
                             </tr>
                         ) : (
@@ -250,6 +294,15 @@ export const DayPassView: FC = () => {
                                 >
                                     <td className="p-4 border-b border-brand-border font-semibold">
                                         {tx.member_name}
+                                    </td>
+                                    <td className="p-4 border-b border-brand-border">
+                                        <span className={`status-pill ${
+                                            tx.plan_name === "HYROX"
+                                                ? "bg-purple-50 text-purple-700"
+                                                : "bg-status-active-bg text-status-active-fg"
+                                        }`}>
+                                            {tx.plan_name}
+                                        </span>
                                     </td>
                                     <td className="p-4 border-b border-brand-border mono font-semibold">
                                         ₹{tx.amount.toFixed(2)}
