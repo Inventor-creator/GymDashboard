@@ -13,6 +13,7 @@ from Routes.gymRoutes import router as gym_router
 from Routes.planRoutes import router as plan_router
 from Routes.trainerRoutes import router as trainer_router
 from Routes.financeRoutes import router as finance_router
+from Routes.daypassRoutes import router as daypass_router
 
 load_dotenv()
 
@@ -81,6 +82,7 @@ app.include_router(user_router)
 app.include_router(plan_router)
 app.include_router(trainer_router)
 app.include_router(finance_router)
+app.include_router(daypass_router)
 
 
 @app.get("/")

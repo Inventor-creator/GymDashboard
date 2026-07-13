@@ -95,10 +95,10 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
             .first()
         )
         plan_price = float(db_plan.price) if db_plan else member.plan_price
-        plan_duration = db_plan.duration_days if db_plan else 30
+        plan_duration:int | None = db_plan.duration_days if db_plan else 30
 
     if member.custom_plan_name and member.custom_plan_price is not None:
-        plan_duration = member.custom_plan_duration or 30
+        plan_duration:int | None = member.custom_plan_duration or 30
 
     # Determine personal training cost from assigned trainer plan
     pt_cost = 0
@@ -123,6 +123,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
     next_trainer_date = date.today() + timedelta(days=trainer_plan_days) if trainer_plan_days > 0 else None
 
     if existing_membership and not existing_membership.is_active:
+
         existing_membership.plan = plan_name
         existing_membership.plan_price = plan_price
         existing_membership.joining_date = datetime.now()
@@ -138,6 +139,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         existing_membership.payment_remark = member.payment_remark
         existing_membership.is_active = True
         db_membership = existing_membership
+
     else:
         db_membership = MemberGym(
             member_id=db_member.member_id,

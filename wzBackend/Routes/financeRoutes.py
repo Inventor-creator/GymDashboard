@@ -362,6 +362,29 @@ def list_expenses(
     return expenses
 
 
+@router.delete("/expenses/{expense_id}")
+def delete_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    x_gym_id: Optional[int] = Header(None),
+):
+    if not x_gym_id:
+        raise HTTPException(status_code=400, detail="X-Gym-Id header missing")
+    ex = (
+        db.query(Expense)
+        .filter(
+            Expense.expense_id == expense_id,
+            Expense.gym_id == x_gym_id,
+        )
+        .first()
+    )
+    if not ex:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    db.delete(ex)
+    db.commit()
+    return {"detail": "Expense deleted"}
+
+
 @router.get("/export")
 def export_transactions_csv(
     db: Session = Depends(get_db),

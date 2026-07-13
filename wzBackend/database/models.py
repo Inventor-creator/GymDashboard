@@ -2,6 +2,7 @@ from datetime import datetime, date
 
 from sqlalchemy import Integer, String, Boolean, ForeignKey, DateTime, Numeric, Date, Text, UniqueConstraint
 from sqlalchemy.orm import mapped_column, Relationship, Mapped
+from sqlalchemy.sql.expression import true
 from database import Base
 
 
@@ -141,3 +142,11 @@ class TrainerPlan(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     trainer: Mapped["Trainer"] = Relationship("Trainer", back_populates="plans")
+
+class TempMember(Base):
+    __tablename__ = "temp_member"
+
+    tempMemId: Mapped[int] = mapped_column(Integer, primary_key=True , index=True)
+    tempMemName: Mapped[str] = mapped_column(String(50))
+    email: Mapped[str] = mapped_column(String(50))
+    number: Mapped[str] = mapped_column(String(50))

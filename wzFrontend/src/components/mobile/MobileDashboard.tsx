@@ -3,6 +3,7 @@ import { MobileFinanceView } from "./MobileFinanceView";
 import { MobileMemberListView } from "./MobileMemberListView";
 import { MobileAnalyticsView } from "./MobileAnalyticsView";
 import { MobilePlansAndTrainersView } from "./MobilePlansAndTrainersView";
+import { MobileDayPassView } from "./MobileDayPassView";
 import "../../mobile.css";
 
 export const MobileDashboard: FC = () => {
@@ -24,6 +25,10 @@ export const MobileDashboard: FC = () => {
         plans: {
             title: "Plans & Trainers",
             subtitle: "Manage membership tiers and your active training staff."
+        },
+        daypass: {
+            title: "Day Passes",
+            subtitle: "Record one-day entries for walk-in customers."
         }
     };
 
@@ -52,6 +57,7 @@ export const MobileDashboard: FC = () => {
                         {tab === "members" && <MobileMemberListView />}
                         {tab === "revenue" && <MobileAnalyticsView />}
                         {tab === "plans" && <MobilePlansAndTrainersView />}
+                        {tab === "daypass" && <MobileDayPassView />}
                     </main>
                 </div>
 
@@ -88,6 +94,14 @@ export const MobileDashboard: FC = () => {
                         >
                             <strong>Plans</strong>
                             <span>Tiers</span>
+                        </button>
+                        <button 
+                            className={`tab-button flex-1 ${tab === "daypass" ? "active" : ""}`} 
+                            type="button" 
+                            onClick={() => setTab("daypass")}
+                        >
+                            <strong>Day Pass</strong>
+                            <span>Walk-in</span>
                         </button>
                     </div>
                 </nav>

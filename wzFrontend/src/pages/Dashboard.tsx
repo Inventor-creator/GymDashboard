@@ -6,6 +6,7 @@ import { MemberListView } from "../components/MemberListView";
 import { AnalyticsView } from "../components/AnalyticsView";
 import { PlansAndTrainersView } from "../components/PlansAndTrainersView";
 import { ExpenseLogView } from "../components/ExpenseLogView";
+import { DayPassView } from "../components/DayPassView";
 import { useGym } from "../contexts/GymContext";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { MobileDashboard } from "../components/mobile/MobileDashboard";
@@ -39,6 +40,7 @@ export const Dashboard: FC = () => {
                         {view === "plans" && "Plans & Trainers"}
                         {view === "expenses" && "Expense Log"}
                         {view === "analytics" && "Revenue Analytics"}
+                        {view === "daypass" && "Day Passes"}
                     </div>
                     <div className="flex items-center gap-4">
                         <button
@@ -59,6 +61,7 @@ export const Dashboard: FC = () => {
                 {view === "plans" && <PlansAndTrainersView />}
                 {view === "expenses" && <ExpenseLogView />}
                 {view === "analytics" && <AnalyticsView />}
+                {view === "daypass" && <DayPassView />}
             </main>
         </div>
     );

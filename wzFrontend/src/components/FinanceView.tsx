@@ -110,6 +110,17 @@ export const FinanceView: FC = () => {
         }
     };
 
+    const handleDeleteExpense = async (expenseId: number) => {
+        if (!confirm("Delete this expense?")) return;
+        try {
+            await api.delete(`/finances/expenses/${expenseId}`);
+            fetchTransactions();
+            fetchSummary();
+        } catch {
+            alert("Failed to delete expense");
+        }
+    };
+
     useEffect(() => {
         fetchSummary();
         fetchOutstanding();
@@ -469,7 +480,18 @@ export const FinanceView: FC = () => {
                                     {tx.remark || "—"}
                                 </td>
                                 <td className="p-4 border-b border-brand-border">
-                                    {tx.transaction_id > 0 && (
+                                    {tx.status === "expense" ? (
+                                        <button
+                                            onClick={() =>
+                                                handleDeleteExpense(
+                                                    Math.abs(tx.transaction_id),
+                                                )
+                                            }
+                                            className="text-[11px] text-red-500 hover:text-red-700 transition-colors"
+                                        >
+                                            Delete
+                                        </button>
+                                    ) : tx.transaction_id > 0 ? (
                                         <button
                                             onClick={() =>
                                                 handleDeleteTransaction(
@@ -480,7 +502,7 @@ export const FinanceView: FC = () => {
                                         >
                                             Delete
                                         </button>
-                                    )}
+                                    ) : null}
                                 </td>
                             </tr>
                         ))}
