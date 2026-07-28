@@ -20,6 +20,17 @@
       box-sizing: border-box;
     }
 
+    .dark .mobile-view,
+    .dark .mobile-view-body {
+      --bg: oklch(15% 0.01 240);
+      --surface: oklch(12% 0.01 240);
+      --fg: oklch(95% 0.01 240);
+      --muted: oklch(65% 0.01 240);
+      --border: oklch(25% 0.02 240);
+      --accent: oklch(65% 0.16 145);
+      --accent-soft: color-mix(in oklab, oklch(65% 0.16 145) 16%, oklch(12% 0.01 240));
+    }
+
     .mobile-view {
       background:
         linear-gradient(180deg, oklch(99% 0.003 250) 0%, var(--bg) 100%);

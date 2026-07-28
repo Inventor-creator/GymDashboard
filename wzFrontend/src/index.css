@@ -29,6 +29,15 @@
     --spacing-sidebar: 240px;
 }
 
+.dark {
+    --color-brand-bg: oklch(15% 0.01 240);
+    --color-brand-surface: oklch(12% 0.01 240);
+    --color-brand-fg: oklch(95% 0.01 240);
+    --color-brand-muted: oklch(65% 0.01 240);
+    --color-brand-border: oklch(25% 0.02 240);
+    --color-brand-accent: oklch(65% 0.16 145);
+}
+
 @layer base {
     body {
         @apply bg-brand-bg text-brand-fg font-body antialiased text-[14px] leading-normal;

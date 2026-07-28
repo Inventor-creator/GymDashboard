@@ -7,6 +7,7 @@ import { AnalyticsView } from "../components/AnalyticsView";
 import { PlansAndTrainersView } from "../components/PlansAndTrainersView";
 import { ExpenseLogView } from "../components/ExpenseLogView";
 import { DayPassView } from "../components/DayPassView";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { useGym } from "../contexts/GymContext";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { MobileDashboard } from "../components/mobile/MobileDashboard";
@@ -43,6 +44,7 @@ export const Dashboard: FC = () => {
                         {view === "daypass" && "Day Passes"}
                     </div>
                     <div className="flex items-center gap-4">
+                        <ThemeToggle />
                         <button
                             onClick={() => navigate("/select-gym")}
                             className="text-[12px] text-brand-accent hover:underline"

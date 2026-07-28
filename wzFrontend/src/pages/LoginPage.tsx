@@ -1,3 +1,5 @@
+import { ThemeToggle } from "../components/ThemeToggle";
+
 export function LoginPage() {
     const handleGoogleLogin = () => {
         // Redirect to backend OAuth login endpoint
@@ -8,6 +10,9 @@ export function LoginPage() {
 
     return (
         <div className="min-h-screen bg-brand-bg flex items-center justify-center p-6">
+            <div className="fixed top-6 right-6">
+                <ThemeToggle />
+            </div>
             <div className="max-w-md w-full bg-brand-surface border border-brand-border p-8 rounded shadow-sm">
                 <div className="text-center mb-10">
                     <div className="w-12 h-12 bg-brand-accent rounded-[4px] mx-auto mb-4 flex items-center justify-center">

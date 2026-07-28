@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 export function LoginError() {
     const [searchParams] = useSearchParams();
@@ -19,6 +20,9 @@ export function LoginError() {
 
     return (
         <div className="min-h-screen bg-brand-bg flex items-center justify-center p-6">
+            <div className="fixed top-6 right-6">
+                <ThemeToggle />
+            </div>
             <div className="max-w-md w-full bg-brand-surface border border-brand-border p-8 rounded shadow-sm text-center">
                 <div className="w-16 h-16 bg-status-canceled-bg rounded-full mx-auto mb-6 flex items-center justify-center">
                     <svg

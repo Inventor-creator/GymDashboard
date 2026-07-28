@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 interface Gym {
     gym_id: number;
@@ -105,12 +106,15 @@ export const AdminDashboard: FC = () => {
             <div className="max-w-[1000px] mx-auto">
                 <div className="flex justify-between items-center mb-10">
                     <h1 className="text-4xl font-bold">Admin Dashboard</h1>
-                    <button
-                        onClick={() => navigate("/select-gym")}
-                        className="text-brand-muted hover:text-brand-fg font-medium"
-                    >
-                        ← Back to Selection
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <ThemeToggle />
+                        <button
+                            onClick={() => navigate("/select-gym")}
+                            className="text-brand-muted hover:text-brand-fg font-medium"
+                        >
+                            ← Back to Selection
+                        </button>
+                    </div>
                 </div>
 
                 <section className="bg-brand-surface border border-brand-border rounded-lg p-8 mb-8">

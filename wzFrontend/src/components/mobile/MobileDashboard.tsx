@@ -4,6 +4,7 @@ import { MobileMemberListView } from "./MobileMemberListView";
 import { MobileAnalyticsView } from "./MobileAnalyticsView";
 import { MobilePlansAndTrainersView } from "./MobilePlansAndTrainersView";
 import { MobileDayPassView } from "./MobileDayPassView";
+import { ThemeToggle } from "../ThemeToggle";
 import "../../mobile.css";
 
 export const MobileDashboard: FC = () => {
@@ -45,6 +46,7 @@ export const MobileDashboard: FC = () => {
                                     <p className="brand-title">Workout Zone</p>
                                 </div>
                             </div>
+                            <ThemeToggle />
                         </div>
                         <div className="header-copy">
                             <h1 className="page-title">{headerCopy[tab]?.title}</h1>

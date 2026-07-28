@@ -2,6 +2,7 @@ import { useEffect, useState, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 import { useGym } from "../contexts/GymContext";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 interface Gym {
     gym_id: number;
@@ -76,7 +77,8 @@ export const SelectGym: FC = () => {
                             Please select a gym to manage.
                         </p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 items-center">
+                        <ThemeToggle />
                         {user?.email === "aryaupatil9@gmail.com" && (
                             <button
                                 onClick={() => navigate("/admin")}
