@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type FC } from "react";
+import { useState, useMemo, useEffect, useCallback, type FC } from "react";
 import api from "../api";
 
 interface Member {
@@ -40,11 +40,68 @@ interface Trainer {
     }[];
 }
 
+export function FetchMembers() {
+    const [members, setMembers] = useState<Member[]>([]);
+
+    const reFetchMembers = useCallback(async () => {
+        try {
+            const response = await api.get("/members/");
+            setMembers(response.data);
+        } catch (error) {
+            console.error("Error fetching members:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchMembers();
+    }, [reFetchMembers]);
+
+    return { members, reFetchMembers };
+}
+
+export function FetchPlans() {
+    const [plans, setPlans] = useState<Plan[]>([]);
+
+    const reFetchPlans = useCallback(async () => {
+        try {
+            const response = await api.get("/plans/");
+            setPlans(response.data);
+        } catch {
+            console.error("Error fetching plans");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchPlans();
+    }, [reFetchPlans]);
+
+    return { plans, reFetchPlans };
+}
+
+export function FetchTrainers() {
+    const [trainers, setTrainers] = useState<Trainer[]>([]);
+
+    const reFetchTrainers = useCallback(async () => {
+        try {
+            const response = await api.get("/trainers/");
+            setTrainers(response.data);
+        } catch {
+            console.error("Error fetching trainers");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchTrainers();
+    }, [reFetchTrainers]);
+
+    return { trainers, reFetchTrainers };
+}
+
 export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
     const [search, setSearch] = useState("");
-    const [members, setMembers] = useState<Member[]>([]);
-    const [plans, setPlans] = useState<Plan[]>([]);
-    const [trainers, setTrainers] = useState<Trainer[]>([]);
+    const { members, reFetchMembers } = FetchMembers();
+    const { plans, reFetchPlans } = FetchPlans();
+    const { trainers, reFetchTrainers } = FetchTrainers();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [isCustomPlan, setIsCustomPlan] = useState(false);
@@ -68,38 +125,11 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         custom_plan_duration: "30",
     });
 
-    const fetchMembers = async () => {
-        try {
-            const response = await api.get("/members/");
-            setMembers(response.data);
-        } catch (error) {
-            console.error("Error fetching members:", error);
-        }
-    };
-
-    const fetchPlans = async () => {
-        try {
-            const response = await api.get("/plans/");
-            setPlans(response.data);
-        } catch {
-            console.error("Error fetching plans");
-        }
-    };
-
-    const fetchTrainers = async () => {
-        try {
-            const response = await api.get("/trainers/");
-            setTrainers(response.data);
-        } catch {
-            console.error("Error fetching trainers");
-        }
-    };
-
     useEffect(() => {
-        fetchMembers();
-        fetchPlans();
-        fetchTrainers();
-    }, [gymId]);
+        reFetchMembers();
+        reFetchPlans();
+        reFetchTrainers();
+    }, [gymId, reFetchMembers, reFetchPlans, reFetchTrainers]);
 
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
@@ -265,7 +295,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                 await api.post("/members/", { ...payload, gym_id: gymId });
             }
             setIsModalOpen(false);
-            fetchMembers();
+            reFetchMembers();
         } catch (error) {
             console.error("error:", error);
             alert("recheck the contents, wrong inputs");
@@ -284,7 +314,7 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
         try {
             await api.delete(`/members/${editingMember.member_id}`);
             setIsModalOpen(false);
-            fetchMembers();
+            reFetchMembers();
         } catch (error) {
             console.error("Failed to delete member:", error);
             alert("Failed to delete member");

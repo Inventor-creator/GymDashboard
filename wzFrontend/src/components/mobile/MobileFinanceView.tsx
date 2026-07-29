@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import { useState, useEffect, useCallback, type FC } from "react";
 import api from "../../api";
 
 interface FinanceSummary {
@@ -22,30 +22,47 @@ interface MobileFinanceViewProps {
     setTab: (tab: string) => void;
 }
 
-export const MobileFinanceView: FC<MobileFinanceViewProps> = ({ setTab }) => {
+export function FetchMobileFinanceSummary() {
     const [summary, setSummary] = useState<FinanceSummary | null>(null);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    const reFetchSummary = useCallback(async () => {
+        try {
+            const res = await api.get("/finances/summary");
+            setSummary(res.data);
+        } catch {
+            console.error("Failed to fetch summary");
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchSummary = async () => {
-            try {
-                const res = await api.get("/finances/summary");
-                setSummary(res.data);
-            } catch {
-                console.error("Failed to fetch summary");
-            }
-        };
-        const fetchTransactions = async () => {
-            try {
-                const res = await api.get("/finances/transactions");
-                setTransactions(res.data.slice(0, 5)); // Just the latest charges
-            } catch {
-                console.error("Failed to fetch transactions");
-            }
-        };
-        fetchSummary();
-        fetchTransactions();
-    }, []);
+        reFetchSummary();
+    }, [reFetchSummary]);
+
+    return { summary, reFetchSummary };
+}
+
+export function FetchMobileFinanceTransactions(limit: number) {
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    const reFetchTransactions = useCallback(async () => {
+        try {
+            const res = await api.get("/finances/transactions");
+            setTransactions(res.data.slice(0, limit));
+        } catch {
+            console.error("Failed to fetch transactions");
+        }
+    }, [limit]);
+
+    useEffect(() => {
+        reFetchTransactions();
+    }, [reFetchTransactions]);
+
+    return { transactions, reFetchTransactions };
+}
+
+export const MobileFinanceView: FC<MobileFinanceViewProps> = ({ setTab }) => {
+    const { summary } = FetchMobileFinanceSummary();
+    const { transactions } = FetchMobileFinanceTransactions(5);
 
     const handleExportCsv = async () => {
         try {

@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import { useState, useEffect, useCallback, type FC } from "react";
 import api from "../../api";
 
 interface FinanceSummary {
@@ -19,30 +19,47 @@ interface Transaction {
     plan_name: string | null;
 }
 
-export const MobileAnalyticsView: FC = () => {
+export function FetchMobileAnalyticsSummary() {
     const [summary, setSummary] = useState<FinanceSummary | null>(null);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    const reFetchSummary = useCallback(async () => {
+        try {
+            const res = await api.get("/finances/summary");
+            setSummary(res.data);
+        } catch {
+            console.error("Failed to fetch summary");
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchSummary = async () => {
-            try {
-                const res = await api.get("/finances/summary");
-                setSummary(res.data);
-            } catch {
-                console.error("Failed to fetch summary");
-            }
-        };
-        const fetchTransactions = async () => {
-            try {
-                const res = await api.get("/finances/transactions");
-                setTransactions(res.data.slice(0, 10)); // Latest 10
-            } catch {
-                console.error("Failed to fetch transactions");
-            }
-        };
-        fetchSummary();
-        fetchTransactions();
-    }, []);
+        reFetchSummary();
+    }, [reFetchSummary]);
+
+    return { summary, reFetchSummary };
+}
+
+export function FetchMobileAnalyticsTransactions(limit: number) {
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    const reFetchTransactions = useCallback(async () => {
+        try {
+            const res = await api.get("/finances/transactions");
+            setTransactions(res.data.slice(0, limit));
+        } catch {
+            console.error("Failed to fetch transactions");
+        }
+    }, [limit]);
+
+    useEffect(() => {
+        reFetchTransactions();
+    }, [reFetchTransactions]);
+
+    return { transactions, reFetchTransactions };
+}
+
+export const MobileAnalyticsView: FC = () => {
+    const { summary } = FetchMobileAnalyticsSummary();
+    const { transactions } = FetchMobileAnalyticsTransactions(10);
 
     const pctMembership = summary
         ? (summary.revenue_by_source.membership_fees /

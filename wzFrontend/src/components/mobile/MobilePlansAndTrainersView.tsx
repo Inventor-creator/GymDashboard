@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import { useState, useEffect, useCallback, type FC } from "react";
 import api from "../../api";
 import { useGym } from "../../contexts/GymContext";
 
@@ -20,11 +20,49 @@ interface Trainer {
     is_active: boolean;
 }
 
+export function FetchMobilePlans() {
+    const [plans, setPlans] = useState<Plan[]>([]);
+
+    const reFetchPlans = useCallback(async () => {
+        try {
+            const res = await api.get("/plans/");
+            setPlans(res.data);
+        } catch {
+            console.error("Failed to fetch plans");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchPlans();
+    }, [reFetchPlans]);
+
+    return { plans, reFetchPlans };
+}
+
+export function FetchMobileTrainers() {
+    const [trainers, setTrainers] = useState<Trainer[]>([]);
+
+    const reFetchTrainers = useCallback(async () => {
+        try {
+            const res = await api.get("/trainers/");
+            setTrainers(res.data);
+        } catch {
+            console.error("Failed to fetch trainers");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchTrainers();
+    }, [reFetchTrainers]);
+
+    return { trainers, reFetchTrainers };
+}
+
 export const MobilePlansAndTrainersView: FC = () => {
     const { activeGymId } = useGym();
     const [tab, setTab] = useState<"plans" | "trainers">("plans");
-    const [plans, setPlans] = useState<Plan[]>([]);
-    const [trainers, setTrainers] = useState<Trainer[]>([]);
+    const { plans, reFetchPlans } = FetchMobilePlans();
+    const { trainers, reFetchTrainers } = FetchMobileTrainers();
 
     // Modal states
     const [showPlanModal, setShowPlanModal] = useState(false);
@@ -42,29 +80,6 @@ export const MobilePlansAndTrainersView: FC = () => {
         charge_per_session: "",
         is_active: true
     });
-
-    const fetchPlans = async () => {
-        try {
-            const res = await api.get("/plans/");
-            setPlans(res.data);
-        } catch {
-            console.error("Failed to fetch plans");
-        }
-    };
-    
-    const fetchTrainers = async () => {
-        try {
-            const res = await api.get("/trainers/");
-            setTrainers(res.data);
-        } catch {
-            console.error("Failed to fetch trainers");
-        }
-    };
-
-    useEffect(() => {
-        fetchPlans();
-        fetchTrainers();
-    }, []);
 
     const handleOpenPlanModal = (p: Plan | null = null) => {
         if (p) {
@@ -111,7 +126,7 @@ export const MobilePlansAndTrainersView: FC = () => {
                 await api.post("/plans/", payload);
             }
             setShowPlanModal(false);
-            fetchPlans();
+            reFetchPlans();
         } catch {
             alert("Failed to save plan.");
         }
@@ -139,7 +154,7 @@ export const MobilePlansAndTrainersView: FC = () => {
                 await api.post("/trainers/", payload);
             }
             setShowTrainerModal(false);
-            fetchTrainers();
+            reFetchTrainers();
         } catch {
             alert("Failed to save trainer.");
         }

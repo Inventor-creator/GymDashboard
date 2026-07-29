@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import { useState, useEffect, useCallback, type FC } from "react";
 import {
     BarChart,
     Bar,
@@ -51,12 +51,74 @@ interface OutstandingMember {
 
 const PIE_COLORS = ["#8884d8", "#82ca9d"];
 
-export const FinanceView: FC = () => {
+export function FetchSummary() {
     const [summary, setSummary] = useState<FinanceSummary | null>(null);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    const reFetchSummary = useCallback(async () => {
+        try {
+            const res = await api.get("/finances/summary");
+            setSummary(res.data);
+        } catch {
+            console.error("Failed to fetch summary");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchSummary();
+    }, [reFetchSummary]);
+
+    return { summary, reFetchSummary };
+}
+
+export function FetchOutstanding() {
     const [outstanding, setOutstanding] = useState<OutstandingMember[]>([]);
+
+    const reFetchOutstanding = useCallback(async () => {
+        try {
+            const res = await api.get("/finances/outstanding");
+            setOutstanding(res.data);
+        } catch {
+            console.error("Failed to fetch outstanding");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchOutstanding();
+    }, [reFetchOutstanding]);
+
+    return { outstanding, reFetchOutstanding };
+}
+
+export function FetchTransactions(paidFilter: string, search: string) {
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    const reFetchTransactions = useCallback(async () => {
+        try {
+            const params: Record<string, string> = {};
+            if (paidFilter) params.paid = paidFilter;
+            if (search) params.search = search;
+            const res = await api.get("/finances/transactions", { params });
+            setTransactions(res.data);
+        } catch {
+            console.error("Failed to fetch transactions");
+        }
+    }, [paidFilter, search]);
+
+    useEffect(() => {
+        reFetchTransactions();
+    }, [reFetchTransactions]);
+
+    return { transactions, reFetchTransactions };
+}
+
+export const FinanceView: FC = () => {
     const [paidFilter, setPaidFilter] = useState("");
     const [search, setSearch] = useState("");
+
+    const { summary, reFetchSummary } = FetchSummary();
+    const { outstanding, reFetchOutstanding } = FetchOutstanding();
+    const { transactions, reFetchTransactions } = FetchTransactions(paidFilter, search);
+
     const [showPayModal, setShowPayModal] = useState(false);
     const [payingMember, setPayingMember] = useState<OutstandingMember | null>(
         null,
@@ -68,43 +130,13 @@ export const FinanceView: FC = () => {
         remark: "",
     });
 
-    const fetchSummary = async () => {
-        try {
-            const res = await api.get("/finances/summary");
-            setSummary(res.data);
-        } catch {
-            console.error("Failed to fetch summary");
-        }
-    };
-
-    const fetchTransactions = async () => {
-        try {
-            const params: Record<string, string> = {};
-            if (paidFilter) params.paid = paidFilter;
-            if (search) params.search = search;
-            const res = await api.get("/finances/transactions", { params });
-            setTransactions(res.data);
-        } catch {
-            console.error("Failed to fetch transactions");
-        }
-    };
-
-    const fetchOutstanding = async () => {
-        try {
-            const res = await api.get("/finances/outstanding");
-            setOutstanding(res.data);
-        } catch {
-            console.error("Failed to fetch outstanding");
-        }
-    };
-
     const handleDeleteTransaction = async (transactionId: number) => {
         if (!confirm("Delete this transaction?")) return;
         try {
             await api.delete(`/finances/transactions/${transactionId}`);
-            fetchTransactions();
-            fetchOutstanding();
-            fetchSummary();
+            reFetchTransactions();
+            reFetchOutstanding();
+            reFetchSummary();
         } catch {
             alert("Failed to delete transaction");
         }
@@ -114,21 +146,12 @@ export const FinanceView: FC = () => {
         if (!confirm("Delete this expense?")) return;
         try {
             await api.delete(`/finances/expenses/${expenseId}`);
-            fetchTransactions();
-            fetchSummary();
+            reFetchTransactions();
+            reFetchSummary();
         } catch {
             alert("Failed to delete expense");
         }
     };
-
-    useEffect(() => {
-        fetchSummary();
-        fetchOutstanding();
-    }, []);
-
-    useEffect(() => {
-        fetchTransactions();
-    }, [paidFilter, search]);
 
     const openPayModal = (m: OutstandingMember) => {
         setPayingMember(m);
@@ -153,9 +176,9 @@ export const FinanceView: FC = () => {
                 remark: payForm.remark || null,
             });
             setShowPayModal(false);
-            fetchSummary();
-            fetchOutstanding();
-            fetchTransactions();
+            reFetchSummary();
+            reFetchOutstanding();
+            reFetchTransactions();
         } catch {
             alert("Failed to record payment");
         }
@@ -189,9 +212,9 @@ export const FinanceView: FC = () => {
         try {
             const res = await api.post("/finances/renew-billing");
             alert(res.data.detail);
-            fetchSummary();
-            fetchOutstanding();
-            fetchTransactions();
+            reFetchSummary();
+            reFetchOutstanding();
+            reFetchTransactions();
         } catch (error) {
             console.error("Failed to renew billing", error);
             alert("Failed to renew billing");

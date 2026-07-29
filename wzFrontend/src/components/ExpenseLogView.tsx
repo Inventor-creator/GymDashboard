@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import { useState, useEffect, useCallback, type FC } from "react";
 import api from "../api";
 
 interface Expense {
@@ -22,8 +22,27 @@ const CATEGORIES = [
     "other",
 ];
 
-export const ExpenseLogView: FC = () => {
+export function FetchExpenses() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
+
+    const reFetchExpenses = useCallback(async () => {
+        try {
+            const res = await api.get("/finances/expenses");
+            setExpenses(res.data);
+        } catch {
+            console.error("Failed to fetch expenses");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchExpenses();
+    }, [reFetchExpenses]);
+
+    return { expenses, reFetchExpenses };
+}
+
+export const ExpenseLogView: FC = () => {
+    const { expenses, reFetchExpenses } = FetchExpenses();
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({
         amount: "",
@@ -31,19 +50,6 @@ export const ExpenseLogView: FC = () => {
         category: "other",
         date: new Date().toISOString().slice(0, 10),
     });
-
-    const fetchExpenses = async () => {
-        try {
-            const res = await api.get("/finances/expenses");
-            setExpenses(res.data);
-        } catch {
-            console.error("Failed to fetch expenses");
-        }
-    };
-
-    useEffect(() => {
-        fetchExpenses();
-    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -61,7 +67,7 @@ export const ExpenseLogView: FC = () => {
                 category: "other",
                 date: new Date().toISOString().slice(0, 10),
             });
-            fetchExpenses();
+            reFetchExpenses();
         } catch {
             alert("Failed to log expense");
         }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type FC } from "react";
+import { useState, useMemo, useEffect, useCallback, type FC } from "react";
 import api from "../../api";
 import { useGym } from "../../contexts/GymContext";
 
@@ -27,10 +27,48 @@ interface Plan {
     price: number;
 }
 
+export function FetchMobileMembers() {
+    const [members, setMembers] = useState<Member[]>([]);
+
+    const reFetchMembers = useCallback(async () => {
+        try {
+            const response = await api.get("/members/");
+            setMembers(response.data);
+        } catch (error) {
+            console.error("Error fetching members:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchMembers();
+    }, [reFetchMembers]);
+
+    return { members, reFetchMembers };
+}
+
+export function FetchMobilePlans() {
+    const [plans, setPlans] = useState<Plan[]>([]);
+
+    const reFetchPlans = useCallback(async () => {
+        try {
+            const response = await api.get("/plans/");
+            setPlans(response.data.filter((p: any) => p.is_active));
+        } catch (error) {
+            console.error("Error fetching plans:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchPlans();
+    }, [reFetchPlans]);
+
+    return { plans, reFetchPlans };
+}
+
 export const MobileMemberListView: FC = () => {
     const { activeGymId } = useGym();
-    const [members, setMembers] = useState<Member[]>([]);
-    const [plans, setPlans] = useState<Plan[]>([]);
+    const { members, reFetchMembers } = FetchMobileMembers();
+    const { plans } = FetchMobilePlans();
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState("all");
 
@@ -60,29 +98,6 @@ export const MobileMemberListView: FC = () => {
         method: "cash",
         remark: ""
     });
-
-    const fetchMembers = async () => {
-        try {
-            const response = await api.get("/members/");
-            setMembers(response.data);
-        } catch (error) {
-            console.error("Error fetching members:", error);
-        }
-    };
-
-    const fetchPlans = async () => {
-        try {
-            const response = await api.get("/plans/");
-            setPlans(response.data.filter((p: any) => p.is_active));
-        } catch (error) {
-            console.error("Error fetching plans:", error);
-        }
-    };
-
-    useEffect(() => {
-        fetchMembers();
-        fetchPlans();
-    }, []);
 
     const filteredMembers = useMemo(() => {
         return members.filter((m) => {
@@ -212,7 +227,7 @@ export const MobileMemberListView: FC = () => {
                 await api.post("/members/", { ...payload, gym_id: activeGymId });
             }
             setShowMemberModal(false);
-            fetchMembers();
+            reFetchMembers();
         } catch (error) {
             console.error("Failed to save member:", error);
             alert("Failed to save member.");
@@ -222,11 +237,11 @@ export const MobileMemberListView: FC = () => {
     const handleDeleteMember = async () => {
         if (!editingMember) return;
         if (!confirm("Are you sure you want to remove this member? This action cannot be undone.")) return;
-        
+
         try {
             await api.delete(`/members/${editingMember.member_id}`);
             setShowMemberModal(false);
-            fetchMembers();
+            reFetchMembers();
         } catch (error) {
             console.error("Failed to delete member:", error);
             alert("Failed to delete member");
@@ -246,7 +261,7 @@ export const MobileMemberListView: FC = () => {
                 remark: paymentForm.remark || null
             });
             setShowPaymentModal(false);
-            fetchMembers();
+            reFetchMembers();
         } catch {
             alert("Failed to record payment");
         }

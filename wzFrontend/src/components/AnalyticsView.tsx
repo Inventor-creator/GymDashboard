@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import { useState, useEffect, useCallback, type FC } from "react";
 import {
     BarChart,
     Bar,
@@ -21,20 +21,27 @@ interface FinanceSummary {
     new_signups_this_month: number;
 }
 
-export const AnalyticsView: FC = () => {
+export function FetchAnalyticsSummary() {
     const [summary, setSummary] = useState<FinanceSummary | null>(null);
 
-    useEffect(() => {
-        const fetchSummary = async () => {
-            try {
-                const res = await api.get("/finances/summary");
-                setSummary(res.data);
-            } catch {
-                console.error("Failed to fetch summary");
-            }
-        };
-        fetchSummary();
+    const reFetchSummary = useCallback(async () => {
+        try {
+            const res = await api.get("/finances/summary");
+            setSummary(res.data);
+        } catch {
+            console.error("Failed to fetch summary");
+        }
     }, []);
+
+    useEffect(() => {
+        reFetchSummary();
+    }, [reFetchSummary]);
+
+    return { summary, reFetchSummary };
+}
+
+export const AnalyticsView: FC = () => {
+    const { summary } = FetchAnalyticsSummary();
 
     const sourceBarData = summary
         ? [

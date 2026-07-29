@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import { useState, useEffect, useCallback, useMemo, type FC } from "react";
 import api from "../api";
 
 interface Plan {
@@ -28,39 +28,64 @@ interface Trainer {
     plans: TrainerPlan[];
 }
 
+export function FetchPlans() {
+    const [plans, setPlans] = useState<Plan[]>([]);
+
+    const reFetchPlans = useCallback(async () => {
+        try {
+            const res = await api.get("/plans/");
+            setPlans(res.data);
+        } catch {
+            console.error("Failed to fetch plans");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchPlans();
+    }, [reFetchPlans]);
+
+    return { plans, reFetchPlans };
+}
+
+export function FetchTrainers() {
+    const [trainers, setTrainers] = useState<Trainer[]>([]);
+
+    const reFetchTrainers = useCallback(async () => {
+        try {
+            const res = await api.get("/trainers/");
+            setTrainers(res.data);
+        } catch {
+            console.error("Failed to fetch trainers");
+        }
+    }, []);
+
+    useEffect(() => {
+        reFetchTrainers();
+    }, [reFetchTrainers]);
+
+    return { trainers, reFetchTrainers };
+}
+
 export const PlansAndTrainersView: FC = () => {
     const [tab, setTab] = useState<"plans" | "trainers">("plans");
 
-    const [plans, setPlans] = useState<Plan[]>([]);
-    const [trainers, setTrainers] = useState<Trainer[]>([]);
+    const { plans, reFetchPlans } = FetchPlans();
+    const { trainers, reFetchTrainers } = FetchTrainers();
     const [showPlanModal, setShowPlanModal] = useState(false);
     const [showTrainerModal, setShowTrainerModal] = useState(false);
     const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
     const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
-    const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
+    const [selectedTrainerId, setSelectedTrainerId] = useState<number | null>(null);
     const [showPlanForm, setShowPlanForm] = useState(false);
+
+    const selectedTrainer = useMemo(
+        () => trainers.find((t) => t.trainer_id === selectedTrainerId) ?? null,
+        [trainers, selectedTrainerId],
+    );
 
     const [planForm, setPlanForm] = useState({ name: "", price: "", duration_days: "30", is_active: true });
     const [trainerForm, setTrainerForm] = useState({ name: "", email: "", phone: "", specialization: "" });
     const [trainerPlanForm, setTrainerPlanForm] = useState({ name: "", price: "", duration_days: "30" });
-
-    const fetchPlans = async () => {
-        try { const res = await api.get("/plans/"); setPlans(res.data); }
-        catch { console.error("Failed to fetch plans"); }
-    };
-
-    const fetchTrainers = async () => {
-        try {
-            const res = await api.get("/trainers/");
-            setTrainers(res.data);
-            if (selectedTrainer) {
-                const updated = (res.data as Trainer[]).find((t: Trainer) => t.trainer_id === selectedTrainer.trainer_id);
-                setSelectedTrainer(updated || null);
-            }
-        } catch { console.error("Failed to fetch trainers"); }
-    };
-
-    useEffect(() => { fetchPlans(); fetchTrainers(); }, []);
 
     const openAddPlan = () => {
         setEditingPlan(null);
@@ -80,12 +105,12 @@ export const PlansAndTrainersView: FC = () => {
             const payload: Record<string, unknown> = { name: planForm.name, price: parseFloat(planForm.price), duration_days: parseInt(planForm.duration_days) };
             if (editingPlan) { payload.is_active = planForm.is_active; await api.put(`/plans/${editingPlan.plan_id}`, payload); }
             else { await api.post("/plans/", payload); }
-            setShowPlanModal(false); fetchPlans();
+            setShowPlanModal(false); reFetchPlans();
         } catch { alert("Failed to save plan"); }
     };
 
     const handleDeletePlan = async (planId: number) => {
-        try { await api.delete(`/plans/${planId}`); fetchPlans(); } catch { alert("Failed to delete plan"); }
+        try { await api.delete(`/plans/${planId}`); reFetchPlans(); } catch { alert("Failed to delete plan"); }
     };
 
     const openAddTrainer = () => {
@@ -106,12 +131,12 @@ export const PlansAndTrainersView: FC = () => {
             const payload = { name: trainerForm.name, email: trainerForm.email || null, phone: trainerForm.phone || null, specialization: trainerForm.specialization || null };
             if (editingTrainer) { await api.put(`/trainers/${editingTrainer.trainer_id}`, payload); }
             else { await api.post("/trainers/", payload); }
-            setShowTrainerModal(false); fetchTrainers();
+            setShowTrainerModal(false); reFetchTrainers();
         } catch { alert("Failed to save trainer"); }
     };
 
     const handleDeleteTrainer = async (trainerId: number) => {
-        try { await api.delete(`/trainers/${trainerId}`); setSelectedTrainer(null); fetchTrainers(); } catch { alert("Failed to delete trainer"); }
+        try { await api.delete(`/trainers/${trainerId}`); setSelectedTrainerId(null); reFetchTrainers(); } catch { alert("Failed to delete trainer"); }
     };
 
     const handlePlanSubmitForTrainer = async (e: React.FormEvent) => {
@@ -125,13 +150,13 @@ export const PlansAndTrainersView: FC = () => {
             });
             setShowPlanForm(false);
             setTrainerPlanForm({ name: "", price: "", duration_days: "30" });
-            fetchTrainers();
+            reFetchTrainers();
         } catch { alert("Failed to save plan"); }
     };
 
     const handleDeleteTrainerPlan = async (planId: number) => {
         if (!selectedTrainer) return;
-        try { await api.delete(`/trainers/${selectedTrainer.trainer_id}/plans/${planId}`); fetchTrainers(); } catch { alert("Failed to delete plan"); }
+        try { await api.delete(`/trainers/${selectedTrainer.trainer_id}/plans/${planId}`); reFetchTrainers(); } catch { alert("Failed to delete plan"); }
     };
 
     return (
@@ -192,7 +217,7 @@ export const PlansAndTrainersView: FC = () => {
                         {trainers.map((t) => (
                             <div
                                 key={t.trainer_id}
-                                onClick={() => setSelectedTrainer(t)}
+                                onClick={() => setSelectedTrainerId(t.trainer_id)}
                                 className={`bg-brand-surface border p-6 rounded cursor-pointer transition-all duration-150 hover:shadow-md ${selectedTrainer?.trainer_id === t.trainer_id ? "border-brand-accent ring-1 ring-brand-accent" : "border-brand-border"}`}
                             >
                                 <div className="flex justify-between items-start mb-3">
@@ -215,7 +240,7 @@ export const PlansAndTrainersView: FC = () => {
                                     <div className="flex justify-between items-center mb-2">
                                         <div className="text-[11px] uppercase tracking-[0.06em] text-brand-muted font-semibold">Plans</div>
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); setSelectedTrainer(t); setShowPlanForm(true); }}
+                                            onClick={(e) => { e.stopPropagation(); setSelectedTrainerId(t.trainer_id); setShowPlanForm(true); }}
                                             className="text-[11px] text-brand-accent font-semibold hover:underline"
                                         >
                                             + Add

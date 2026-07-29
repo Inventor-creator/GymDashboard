@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import { useState, useEffect, useCallback, type FC } from "react";
 import api from "../../api";
 
 const PLAN_OPTIONS = ["Day Pass", "HYROX"];
@@ -13,10 +13,31 @@ interface DayPassTx {
     remark: string | null;
 }
 
-export const MobileDayPassView: FC = () => {
+export function FetchMobileDayPasses(planFilter: string) {
     const [dayPasses, setDayPasses] = useState<DayPassTx[]>([]);
-    const [showModal, setShowModal] = useState(false);
+
+    const reFetchDayPasses = useCallback(async () => {
+        try {
+            const params: Record<string, string> = {};
+            if (planFilter) params.plan = planFilter;
+            const res = await api.get("/day-passes/", { params });
+            setDayPasses(res.data);
+        } catch {
+            console.error("Failed to fetch day passes");
+        }
+    }, [planFilter]);
+
+    useEffect(() => {
+        reFetchDayPasses();
+    }, [reFetchDayPasses]);
+
+    return { dayPasses, reFetchDayPasses };
+}
+
+export const MobileDayPassView: FC = () => {
     const [planFilter, setPlanFilter] = useState("");
+    const { dayPasses, reFetchDayPasses } = FetchMobileDayPasses(planFilter);
+    const [showModal, setShowModal] = useState(false);
     const [form, setForm] = useState({
         name: "",
         email: "",
@@ -26,21 +47,6 @@ export const MobileDayPassView: FC = () => {
         payment_method: "cash",
         payment_remark: "",
     });
-
-    const fetchDayPasses = async () => {
-        try {
-            const params: Record<string, string> = {};
-            if (planFilter) params.plan = planFilter;
-            const res = await api.get("/day-passes/", { params });
-            setDayPasses(res.data);
-        } catch {
-            console.error("Failed to fetch day passes");
-        }
-    };
-
-    useEffect(() => {
-        fetchDayPasses();
-    }, [planFilter]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,7 +70,7 @@ export const MobileDayPassView: FC = () => {
                 payment_method: "cash",
                 payment_remark: "",
             });
-            fetchDayPasses();
+            reFetchDayPasses();
         } catch {
             alert("Failed to record day pass");
         }
@@ -74,7 +80,7 @@ export const MobileDayPassView: FC = () => {
         if (!confirm("Delete this transaction?")) return;
         try {
             await api.delete(`/finances/transactions/${transactionId}`);
-            fetchDayPasses();
+            reFetchDayPasses();
         } catch {
             alert("Failed to delete transaction");
         }
