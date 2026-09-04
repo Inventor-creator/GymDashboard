@@ -136,6 +136,7 @@ export const PlansAndTrainersView: FC = () => {
     };
 
     const handleDeleteTrainer = async (trainerId: number) => {
+        if (!confirm("Delete this trainer?")) return;
         try { await api.delete(`/trainers/${trainerId}`); setSelectedTrainerId(null); reFetchTrainers(); } catch { alert("Failed to delete trainer"); }
     };
 
@@ -231,6 +232,12 @@ export const PlansAndTrainersView: FC = () => {
                                             className="px-2 py-1 rounded font-semibold border border-brand-border bg-brand-surface text-brand-fg transition-all duration-150 hover:bg-brand-bg text-[11px]"
                                         >
                                             Edit Trainer
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteTrainer(t.trainer_id); }}
+                                            className="px-2 py-1 rounded font-semibold border border-red-200 text-red-500 transition-all duration-150 hover:bg-red-50 text-[11px]"
+                                        >
+                                            Delete
                                         </button>
                                     </div>
                                 </div>
