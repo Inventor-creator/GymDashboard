@@ -1,5 +1,5 @@
 # Build frontend
-FROM node:18-alpine AS frontend-build
+FROM node:22-alpine AS frontend-build
 WORKDIR /app/wzFrontend
 COPY wzFrontend/package*.json ./
 RUN npm ci
