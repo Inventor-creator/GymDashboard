@@ -1,8 +1,14 @@
 import axios from "axios";
 
-// You can adjust the baseURL to your backend API endpoint
+// In production, the backend serves the frontend, so use relative URLs
+// In development, use the VITE_API_URL env var or default to localhost
+const baseURL =
+    import.meta.env.MODE === "production"
+        ? ""
+        : import.meta.env.VITE_API_URL || "http://localhost:8080";
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080",
+    baseURL,
     withCredentials: true,
     headers: {
         "Content-Type": "application/json",

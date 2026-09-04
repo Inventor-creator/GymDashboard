@@ -2,9 +2,12 @@ import { ThemeToggle } from "../components/ThemeToggle";
 
 export function LoginPage() {
     const handleGoogleLogin = () => {
-        // Redirect to backend OAuth login endpoint
+        // In production, backend serves frontend, so use relative URL
+        // In development, use VITE_API_URL or default to localhost
         const backendUrl =
-            import.meta.env.VITE_API_URL || "http://localhost:8080";
+            import.meta.env.MODE === "production"
+                ? ""
+                : import.meta.env.VITE_API_URL || "http://localhost:8080";
         window.location.href = `${backendUrl}/auth/login`;
     };
 

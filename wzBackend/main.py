@@ -1,9 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
 from database import models, engine
 from authlib.integrations.starlette_client import OAuth
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 from Routes.authRoutes import router as auth_router
@@ -55,20 +58,25 @@ seed_default_plans()
 app = FastAPI(title="WorkoutZone Backend")
 
 # Add Session Middleware
+is_production = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER") or os.getenv("PRODUCTION")
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY") or "",
     session_cookie="secure_session",
     max_age=3600,
     same_site="lax",
-    https_only=False,
+    https_only=bool(is_production),
     domain=None,
 )
 
 # Add CORS Middleware
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+allow_origins = [frontend_url]
+if is_production:
+    allow_origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -85,12 +93,26 @@ app.include_router(finance_router)
 app.include_router(daypass_router)
 
 
-@app.get("/")
+@app.get("/api")
 def read_root():
     return {"message": "Welcome to WorkoutZone API"}
+
+
+# Serve frontend static files
+FRONTEND_DIR = Path(__file__).parent.parent / "wzFrontend" / "dist"
+
+if FRONTEND_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="static-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        file_path = FRONTEND_DIR / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIR / "index.html")
 
 
 if __name__ == "__main__":
     import uvicorn
     models.Base.metadata.create_all(bind=engine)
-    uvicorn.run(app, host="0.0.0.0", port=8080, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
