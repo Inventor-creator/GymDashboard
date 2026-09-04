@@ -15,9 +15,9 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URI
-        value: https://your-app.onrender.com/auth/callback
+        value: https://gymdashboard-1.onrender.com/auth/callback
       - key: FRONTEND_URL
-        value: https://your-app.onrender.com
+        value: https://gymdashboard-1.onrender.com
       - key: PRODUCTION
         value: "true"
     healthCheckPath: /api
