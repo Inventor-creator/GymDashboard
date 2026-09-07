@@ -8,3 +8,6 @@ authlib
 httpx
 email-validator
 pydantic
+itsdangerous
+PyJWT
+python-dateutil
