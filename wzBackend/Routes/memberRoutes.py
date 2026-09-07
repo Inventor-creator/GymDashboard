@@ -3,10 +3,39 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, date, timedelta
 from database import get_db
-from database.models import Member, Gym, MemberGym, Plan, Transactions, Trainer, TrainerPlan
+from database.models import Member, Gym, MemberGym, Plan, Transactions, Trainer, TrainerPlan, TrainerAssignment
 from schemas.MemberSchemas import MemberCreate, MemberResponse, MemberUpdate
 
 router = APIRouter(prefix="/members", tags=["Members"])
+
+
+def _open_trainer_assignment(db: Session, member_id: int, gym_id: int, trainer_id: int, plan_id: Optional[int]):
+    """Log the start of a trainer assignment. Closes any existing open entry for this member."""
+    open_entry = db.query(TrainerAssignment).filter(
+        TrainerAssignment.member_id == member_id,
+        TrainerAssignment.gym_id == gym_id,
+        TrainerAssignment.end_date.is_(None),
+    ).first()
+    if open_entry:
+        if open_entry.trainer_id == trainer_id and open_entry.trainer_plan_id == plan_id:
+            return
+        open_entry.end_date = date.today()
+    db.add(TrainerAssignment(
+        member_id=member_id,
+        gym_id=gym_id,
+        trainer_id=trainer_id,
+        trainer_plan_id=plan_id,
+        start_date=date.today(),
+    ))
+
+
+def _close_open_trainer_assignment(db: Session, member_id: int, gym_id: int):
+    """Close the active trainer assignment for this member, recording the removal date."""
+    db.query(TrainerAssignment).filter(
+        TrainerAssignment.member_id == member_id,
+        TrainerAssignment.gym_id == gym_id,
+        TrainerAssignment.end_date.is_(None),
+    ).update({"end_date": date.today()})
 
 
 @router.get("/", response_model=List[MemberResponse])
@@ -23,6 +52,14 @@ def get_members(db: Session = Depends(get_db), x_gym_id: Optional[int] = Header(
 
     trainer_map = {t.trainer_id: t.name for t in db.query(Trainer).filter(Trainer.gym_id == x_gym_id).all()}
     plan_map = {p.plan_id: p.name for p in db.query(TrainerPlan).all()}
+    gym_plan_map = {p.name: p.plan_id for p in db.query(Plan).filter(Plan.gym_id == x_gym_id).all()}
+    history = db.query(TrainerAssignment).filter(TrainerAssignment.gym_id == x_gym_id).all()
+    removed_map: dict[int, date] = {}
+    for h in history:
+        if h.end_date is not None:
+            cur = removed_map.get(h.member_id)
+            if cur is None or h.end_date > cur:
+                removed_map[h.member_id] = h.end_date
     output = []
     for member, member_gym in results:
         output.append(
@@ -33,6 +70,7 @@ def get_members(db: Session = Depends(get_db), x_gym_id: Optional[int] = Header(
                 "phone_number": member.phone_number,
                 "plan": member_gym.plan,
                 "plan_price": float(member_gym.plan_price),
+                "plan_id": gym_plan_map.get(member_gym.plan),
                 "joining_date": member_gym.joining_date,
                 "has_personal_training": member_gym.has_personal_training,
                 "personal_training_cost": float(member_gym.personal_training_cost),
@@ -40,6 +78,8 @@ def get_members(db: Session = Depends(get_db), x_gym_id: Optional[int] = Header(
                 "assigned_trainer_name": trainer_map.get(member_gym.assigned_trainer_id) if member_gym.assigned_trainer_id else None,
                 "assigned_trainer_plan_id": member_gym.assigned_trainer_plan_id,
                 "assigned_trainer_plan_name": plan_map.get(member_gym.assigned_trainer_plan_id) if member_gym.assigned_trainer_plan_id else None,
+                "assigned_trainer_at": member_gym.assigned_trainer_at,
+                "trainer_removed_at": removed_map.get(member.member_id),
                 "total_owed": float(member_gym.total_owed),
                 "paid": member_gym.paid,
                 "payment_method": member_gym.payment_method,
@@ -49,6 +89,24 @@ def get_members(db: Session = Depends(get_db), x_gym_id: Optional[int] = Header(
                 "is_active": member_gym.is_active,
             }
         )
+    today = date.today()
+
+    def _days_until(d: Optional[date]) -> Optional[int]:
+        if not d:
+            return None
+        return (d - today).days
+
+    def _sort_key(item: dict):
+        # Left (inactive) members always sink to the bottom.
+        charge_dates = [
+            d for d in (_days_until(item.get("next_billing_date")), _days_until(item.get("next_trainer_billing_date")))
+            if d is not None
+        ]
+        next_charge = min(charge_dates) if charge_dates else None
+        # Closest upcoming charge first; members without a charge come after those with one.
+        return (0 if item["is_active"] else 1, 0 if next_charge is not None else 1, next_charge if next_charge is not None else 0)
+
+    output.sort(key=_sort_key)
     return output
 
 
@@ -116,11 +174,21 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
     # Calculate total cost
     total_cost = plan_price + pt_cost
 
+    # A down payment cannot exceed the total cost of the plan(s).
+    if member.initial_paid_amount < 0:
+        raise HTTPException(status_code=400, detail="Initial payment cannot be negative")
+    if member.initial_paid_amount > total_cost:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Initial payment (₹{member.initial_paid_amount:.2f}) exceeds the total cost (₹{total_cost:.2f})",
+        )
+
     # Calculate running balance (total_owed) and paid status
     total_owed = max(0.0, total_cost - member.initial_paid_amount)
     paid_status = (total_owed <= 0)
 
     next_trainer_date = date.today() + timedelta(days=trainer_plan_days) if trainer_plan_days > 0 else None
+    assigned_trainer_date = date.today() if member.assigned_trainer_id else None
 
     if existing_membership and not existing_membership.is_active:
 
@@ -132,6 +200,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         existing_membership.personal_training_cost = pt_cost
         existing_membership.assigned_trainer_id = member.assigned_trainer_id
         existing_membership.assigned_trainer_plan_id = member.assigned_trainer_plan_id
+        existing_membership.assigned_trainer_at = assigned_trainer_date
         existing_membership.next_trainer_billing_date = next_trainer_date
         existing_membership.total_owed = total_owed
         existing_membership.paid = paid_status
@@ -152,6 +221,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
             personal_training_cost=pt_cost,
             assigned_trainer_id=member.assigned_trainer_id,
             assigned_trainer_plan_id=member.assigned_trainer_plan_id,
+            assigned_trainer_at=assigned_trainer_date,
             next_trainer_billing_date=next_trainer_date,
             total_owed=total_owed,
             paid=paid_status,
@@ -159,6 +229,9 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
             payment_remark=member.payment_remark,
         )
         db.add(db_membership)
+
+    if member.assigned_trainer_id:
+        _open_trainer_assignment(db, db_member.member_id, member.gym_id, member.assigned_trainer_id, member.assigned_trainer_plan_id)
 
     if member.initial_paid_amount > 0:
         tx = Transactions(
@@ -187,6 +260,8 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         p = db.query(TrainerPlan).filter(TrainerPlan.plan_id == db_membership.assigned_trainer_plan_id).first()
         plan_name_str = p.name if p else None
 
+    plan_db = db.query(Plan).filter(Plan.gym_id == member.gym_id, Plan.name == db_membership.plan).first()
+
     return {
         "member_id": db_member.member_id,
         "name": db_member.name,
@@ -194,6 +269,7 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         "phone_number": db_member.phone_number,
         "plan": db_membership.plan,
         "plan_price": float(db_membership.plan_price),
+        "plan_id": plan_db.plan_id if plan_db else None,
         "joining_date": db_membership.joining_date,
         "has_personal_training": db_membership.has_personal_training,
         "personal_training_cost": float(db_membership.personal_training_cost),
@@ -201,6 +277,8 @@ def create_member(member: MemberCreate, db: Session = Depends(get_db)):
         "assigned_trainer_name": trainer_name,
         "assigned_trainer_plan_id": db_membership.assigned_trainer_plan_id,
         "assigned_trainer_plan_name": plan_name_str,
+        "assigned_trainer_at": db_membership.assigned_trainer_at,
+        "trainer_removed_at": None,
         "total_owed": float(total_owed),
         "paid": db_membership.paid,
         "payment_method": db_membership.payment_method,
@@ -291,17 +369,45 @@ def update_member(
         if db_membership.next_billing_date:
             db_membership.next_billing_date = db_membership.next_billing_date - timedelta(days=old_duration) + timedelta(days=new_duration)
 
+    old_trainer_id = db_membership.assigned_trainer_id
+    old_plan_id = db_membership.assigned_trainer_plan_id
+
     if "assigned_trainer_id" in update_data:
         db_membership.assigned_trainer_id = update_data["assigned_trainer_id"]
-
     if "assigned_trainer_plan_id" in update_data:
         db_membership.assigned_trainer_plan_id = update_data["assigned_trainer_plan_id"]
-        if update_data["assigned_trainer_plan_id"]:
-            new_plan = db.query(TrainerPlan).filter(TrainerPlan.plan_id == update_data["assigned_trainer_plan_id"]).first()
+
+    new_trainer_id = db_membership.assigned_trainer_id
+    new_plan_id = db_membership.assigned_trainer_plan_id
+
+    if new_trainer_id:
+        # Only re-anchor the trainer cycle when the assignment actually changes.
+        trainer_reassigned = (
+            old_trainer_id != new_trainer_id
+            or old_plan_id != new_plan_id
+            or db_membership.assigned_trainer_at is None
+        )
+        if trainer_reassigned:
+            db_membership.assigned_trainer_at = date.today()
+        if new_plan_id:
+            new_plan = db.query(TrainerPlan).filter(TrainerPlan.plan_id == new_plan_id).first()
             if new_plan:
                 db_membership.personal_training_cost = float(new_plan.price)
                 db_membership.has_personal_training = True
-                db_membership.next_trainer_billing_date = date.today() + timedelta(days=new_plan.duration_days)
+                if trainer_reassigned:
+                    db_membership.next_trainer_billing_date = date.today() + timedelta(days=new_plan.duration_days)
+        elif trainer_reassigned and "assigned_trainer_plan_id" in update_data:
+            # Trainer kept but plan removed -> no more trainer billing
+            db_membership.next_trainer_billing_date = None
+        _open_trainer_assignment(db, db_member.member_id, x_gym_id, new_trainer_id, new_plan_id)
+    elif old_trainer_id is not None:
+        # Trainer removed -> clean up all trainer/P.T. billing state
+        db_membership.assigned_trainer_plan_id = None
+        db_membership.assigned_trainer_at = None
+        db_membership.next_trainer_billing_date = None
+        db_membership.has_personal_training = False
+        db_membership.personal_training_cost = 0
+        _close_open_trainer_assignment(db, db_member.member_id, x_gym_id)
 
     # Recalculate total_owed by adjusting for any price differences
     new_plan_price = float(db_membership.plan_price)
@@ -330,6 +436,14 @@ def update_member(
         p = db.query(TrainerPlan).filter(TrainerPlan.plan_id == db_membership.assigned_trainer_plan_id).first()
         plan_name_str = p.name if p else None
 
+    trainer_removed_at = db.query(TrainerAssignment.end_date).filter(
+        TrainerAssignment.member_id == db_member.member_id,
+        TrainerAssignment.gym_id == x_gym_id,
+        TrainerAssignment.end_date.isnot(None),
+    ).order_by(TrainerAssignment.end_date.desc()).first()
+
+    plan_db = db.query(Plan).filter(Plan.gym_id == x_gym_id, Plan.name == db_membership.plan).first()
+
     return {
         "member_id": db_member.member_id,
         "name": db_member.name,
@@ -337,6 +451,7 @@ def update_member(
         "phone_number": db_member.phone_number,
         "plan": db_membership.plan,
         "plan_price": float(db_membership.plan_price),
+        "plan_id": plan_db.plan_id if plan_db else None,
         "joining_date": db_membership.joining_date,
         "has_personal_training": db_membership.has_personal_training,
         "personal_training_cost": float(db_membership.personal_training_cost),
@@ -344,6 +459,8 @@ def update_member(
         "assigned_trainer_name": trainer_name,
         "assigned_trainer_plan_id": db_membership.assigned_trainer_plan_id,
         "assigned_trainer_plan_name": plan_name_str,
+        "assigned_trainer_at": db_membership.assigned_trainer_at,
+        "trainer_removed_at": trainer_removed_at[0] if trainer_removed_at else None,
         "total_owed": float(db_membership.total_owed),
         "paid": db_membership.paid,
         "payment_method": db_membership.payment_method,
@@ -376,10 +493,12 @@ def delete_member(
     db_membership.has_personal_training = False
     db_membership.assigned_trainer_id = None
     db_membership.assigned_trainer_plan_id = None
+    db_membership.assigned_trainer_at = None
     db_membership.next_billing_date = None
     db_membership.next_trainer_billing_date = None
     db_membership.total_owed = 0
     db_membership.paid = True
     db_membership.is_active = False
+    _close_open_trainer_assignment(db, member_id, x_gym_id)
     db.commit()
     return {"detail": "Member removed successfully"}

@@ -8,13 +8,18 @@ interface Member {
     phone_number: string;
     plan: string;
     plan_price: number;
+    plan_id: number | null;
     joining_date: string;
+    next_billing_date: string | null;
     has_personal_training: boolean;
     personal_training_cost: number;
     assigned_trainer_id: number | null;
     assigned_trainer_name: string | null;
     assigned_trainer_plan_id: number | null;
     assigned_trainer_plan_name: string | null;
+    assigned_trainer_at: string | null;
+    trainer_removed_at: string | null;
+    next_trainer_billing_date: string | null;
     total_owed: number;
     paid: boolean;
     payment_method: string;
@@ -99,6 +104,7 @@ export function FetchTrainers() {
 
 export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
     const [search, setSearch] = useState("");
+    const [trainerFilter, setTrainerFilter] = useState<number | null>(null);
     const { members, reFetchMembers } = FetchMembers();
     const { plans, reFetchPlans } = FetchPlans();
     const { trainers, reFetchTrainers } = FetchTrainers();
@@ -289,6 +295,17 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                 payload.plan = memberForm.custom_plan_name;
             }
 
+            if (!editingMember) {
+                const amount =
+                    parseFloat(memberForm.initial_paid_amount) || 0;
+                if (amount > initialPaymentMax) {
+                    alert(
+                        `Initial payment cannot exceed the total cost of ₹${initialPaymentMax.toLocaleString()}`,
+                    );
+                    return;
+                }
+            }
+
             if (editingMember) {
                 await api.put(`/members/${editingMember.member_id}`, payload);
             } else {
@@ -324,11 +341,41 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
     const filteredMembers = useMemo(() => {
         return members.filter(
             (m) =>
-                m.name.toLowerCase().includes(search.toLowerCase()) ||
-                m.plan.toLowerCase().includes(search.toLowerCase()) ||
-                m.email.toLowerCase().includes(search.toLowerCase()),
+                (m.name.toLowerCase().includes(search.toLowerCase()) ||
+                    m.plan.toLowerCase().includes(search.toLowerCase()) ||
+                    m.email.toLowerCase().includes(search.toLowerCase())) &&
+                (trainerFilter === null ||
+                    m.assigned_trainer_id === trainerFilter),
         );
-    }, [search, members]);
+    }, [search, trainerFilter, members]);
+
+    const initialPaymentMax = useMemo(() => {
+        const base = parseFloat(String(memberForm.plan_price)) || 0;
+        let pt = 0;
+        if (memberForm.assigned_trainer_plan_id) {
+            const t = trainers.find(
+                (x) =>
+                    x.trainer_id ===
+                    parseInt(memberForm.assigned_trainer_id),
+            );
+            pt =
+                t?.plans?.find(
+                    (p) =>
+                        p.plan_id ===
+                        parseInt(memberForm.assigned_trainer_plan_id),
+                )?.price ?? 0;
+        } else if (memberForm.has_personal_training) {
+            pt = parseFloat(String(memberForm.personal_training_cost)) || 0;
+        }
+        return base + pt;
+    }, [
+        memberForm.plan_price,
+        memberForm.assigned_trainer_plan_id,
+        memberForm.assigned_trainer_id,
+        memberForm.has_personal_training,
+        memberForm.personal_training_cost,
+        trainers,
+    ]);
 
     return (
         <div className="p-8 max-w-[1200px] w-full mx-auto">
@@ -543,13 +590,23 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                 <select
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={memberForm.assigned_trainer_id}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
+                                        const nextTrainer = trainers.find(
+                                            (t) =>
+                                                String(t.trainer_id) ===
+                                                e.target.value,
+                                        );
+                                        const firstPlan =
+                                            nextTrainer?.plans?.[0];
                                         setMemberForm({
                                             ...memberForm,
                                             assigned_trainer_id: e.target.value,
-                                            assigned_trainer_plan_id: "",
-                                        })
-                                    }
+                                            assigned_trainer_plan_id:
+                                                firstPlan
+                                                    ? String(firstPlan.plan_id)
+                                                    : "",
+                                        });
+                                    }}
                                 >
                                     <option value="">Select a trainer</option>
                                     {trainers.map((t) => (
@@ -594,6 +651,9 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                                     })
                                                 }
                                             >
+                                                <option value="">
+                                                    Select a plan…
+                                                </option>
                                                 {selectedTrainer.plans.map(
                                                     (tp) => (
                                                         <option
@@ -623,6 +683,13 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                         </label>
                                         <input
                                             type="number"
+                                            min="0"
+                                            max={
+                                                !editingMember
+                                                    ? String(initialPaymentMax)
+                                                    : undefined
+                                            }
+                                            step="0.01"
                                             value={
                                                 memberForm.initial_paid_amount
                                             }
@@ -720,10 +787,37 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                 Plan
                             </th>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
-                                Join Date
+                                Plan Billing
+                            </th>
+                            <th
+                                className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] border-b border-brand-border cursor-pointer select-none hover:bg-brand-surface/60"
+                                onClick={() => {
+                                    if (trainers.length === 0) return;
+                                    const ids = trainers.map((t) => t.trainer_id);
+                                    if (trainerFilter === null) {
+                                        setTrainerFilter(ids[0]);
+                                    } else {
+                                        const idx = ids.indexOf(trainerFilter);
+                                        const next = ids[(idx + 1) % ids.length];
+                                        setTrainerFilter(idx === ids.length - 1 ? null : next);
+                                    }
+                                }}
+                                title="Click to filter by trainer"
+                            >
+                                <span
+                                    className={
+                                        trainerFilter !== null
+                                            ? "text-brand-accent"
+                                            : "text-brand-muted"
+                                    }
+                                >
+                                    Trainer
+                                    {trainerFilter !== null &&
+                                        ` · ${trainers.find((t) => t.trainer_id === trainerFilter)?.name ?? ""}`}
+                                </span>
                             </th>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
-                                Trainer
+                                Trainer Billing
                             </th>
                             <th className="bg-brand-bg px-4 py-3 text-[11px] uppercase tracking-[0.08em] text-brand-muted border-b border-brand-border">
                                 Owed
@@ -756,16 +850,65 @@ export const MemberListView: FC<{ gymId: number }> = ({ gymId }) => {
                                 <td className="p-4 border-b border-brand-border">
                                     {member.plan}
                                 </td>
-                                <td className="p-4 border-b border-brand-border mono">
-                                    {new Date(
-                                        member.joining_date,
-                                    ).toLocaleDateString()}
+                                <td className="p-4 border-b border-brand-border">
+                                    <span className="block font-medium">
+                                        {member.plan}
+                                        <span className="block text-xs text-brand-muted font-normal">
+                                            Bought{" "}
+                                            {member.joining_date
+                                                ? new Date(member.joining_date).toLocaleDateString()
+                                                : "—"}
+                                        </span>
+                                    </span>
+                                    {member.next_billing_date ? (
+                                        <span className="block text-xs font-semibold" style={{ marginTop: "4px" }}>
+                                            Next charge{" "}
+                                            {new Date(member.next_billing_date).toLocaleDateString()}
+                                        </span>
+                                    ) : (
+                                        <span className="block text-xs text-brand-muted font-normal" style={{ marginTop: "4px" }}>
+                                            No next charge
+                                        </span>
+                                    )}
                                 </td>
                                 <td className="p-4 border-b border-brand-border">
-                                    {member.assigned_trainer_name || (
-                                        <span className="text-brand-muted">
-                                            —
+                                    {member.assigned_trainer_name ? (
+                                        <span className="block font-medium">
+                                            {member.assigned_trainer_name}
+                                            <span className="block text-xs text-brand-muted font-normal">
+                                                {member.assigned_trainer_plan_name
+                                                    ? `${member.assigned_trainer_plan_name} · Added ${member.assigned_trainer_at ? new Date(member.assigned_trainer_at).toLocaleDateString() : "—"}`
+                                                    : member.assigned_trainer_at
+                                                        ? `Added ${new Date(member.assigned_trainer_at).toLocaleDateString()}`
+                                                        : null}
+                                            </span>
                                         </span>
+                                    ) : member.trainer_removed_at ? (
+                                        <span className="block">
+                                            <span className="text-brand-muted">—</span>
+                                            <span className="block text-xs text-brand-muted font-normal">
+                                                Removed{" "}
+                                                {new Date(
+                                                    member.trainer_removed_at,
+                                                ).toLocaleDateString()}
+                                            </span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-brand-muted">—</span>
+                                    )}
+                                </td>
+                                <td className="p-4 border-b border-brand-border mono">
+                                    {member.next_trainer_billing_date ? (
+                                        <span className="block">
+                                            {new Date(
+                                                member.next_trainer_billing_date,
+                                            ).toLocaleDateString()}
+                                            <span className="block text-xs text-brand-muted font-normal">
+                                                Next charge
+                                            </span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-brand-muted">—</span>
                                     )}
                                 </td>
                                 <td className="p-4 border-b border-brand-border mono font-semibold">

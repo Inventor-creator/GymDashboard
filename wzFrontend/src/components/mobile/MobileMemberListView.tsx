@@ -10,10 +10,15 @@ interface Member {
     plan: string;
     plan_price: number;
     plan_id: number | null;
-    custom_plan_price: number | null;
     joining_date: string;
+    next_billing_date: string | null;
     has_personal_training: boolean;
     personal_training_cost: number | null;
+    assigned_trainer_name: string | null;
+    assigned_trainer_plan_name: string | null;
+    assigned_trainer_at: string | null;
+    trainer_removed_at: string | null;
+    next_trainer_billing_date: string | null;
     total_owed: number;
     paid: boolean;
     payment_method: string;
@@ -220,6 +225,16 @@ export const MobileMemberListView: FC = () => {
             payload.plan = memberForm.custom_plan_name;
         }
 
+        if (!editingMember) {
+            const amount = parseFloat(memberForm.initial_paid_amount) || 0;
+            if (amount > memberTotalCost) {
+                alert(
+                    `Initial payment cannot exceed the total cost of ₹${memberTotalCost.toLocaleString()}`,
+                );
+                return;
+            }
+        }
+
         try {
             if (editingMember) {
                 await api.put(`/members/${editingMember.member_id}`, payload);
@@ -251,11 +266,22 @@ export const MobileMemberListView: FC = () => {
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!payingMember || !activeGymId) return;
+        const amount = parseFloat(paymentForm.amount);
+        if (amount < 0) {
+            alert("Payment amount cannot be negative");
+            return;
+        }
+        if (amount > payingMember.total_owed) {
+            alert(
+                `Payment amount exceeds the outstanding balance of ₹${payingMember.total_owed.toLocaleString()}`,
+            );
+            return;
+        }
         try {
             await api.post("/finances/pay", {
                 member_id: payingMember.member_id,
                 gym_id: activeGymId,
-                amount: parseFloat(paymentForm.amount),
+                amount,
                 payment_method: paymentForm.method,
                 paid_by: paymentForm.method,
                 remark: paymentForm.remark || null
@@ -266,6 +292,33 @@ export const MobileMemberListView: FC = () => {
             alert("Failed to record payment");
         }
     };
+
+    const isCustomForm =
+        memberForm.plan_id === "custom" || memberForm.plan_id === "";
+    const memberTotalCost = useMemo(() => {
+        let price = 0;
+        if (!isCustomForm) {
+            price =
+                plans.find(
+                    (p) => p.plan_id.toString() === memberForm.plan_id,
+                )?.price ?? 0;
+        } else {
+            price = parseFloat(memberForm.custom_plan_price) || 0;
+        }
+        return (
+            price +
+            (memberForm.has_personal_training
+                ? parseFloat(String(memberForm.personal_training_cost)) || 0
+                : 0)
+        );
+    }, [
+        memberForm.plan_id,
+        memberForm.custom_plan_price,
+        memberForm.has_personal_training,
+        memberForm.personal_training_cost,
+        plans,
+        isCustomForm,
+    ]);
 
     return (
         <section className="page active pb-6" aria-labelledby="page-title">
@@ -329,8 +382,33 @@ export const MobileMemberListView: FC = () => {
                                     </div>
                                 </div>
                                 <div className="inline-cluster" style={{ marginTop: "12px" }}>
-                                    <span className="plan-pill">{member.plan} {member.has_personal_training ? "+ PT" : ""}</span>
+                                    <span className="plan-pill">
+                                        {member.plan} {member.has_personal_training ? "+ PT" : ""}
+                                        {member.next_billing_date
+                                            ? ` · next ${new Date(member.next_billing_date).toLocaleDateString()}`
+                                            : ""}
+                                    </span>
                                 </div>
+                                <p className="subline" style={{ marginTop: "8px" }}>
+                                    Plan bought {new Date(member.joining_date).toLocaleDateString()}
+                                </p>
+                                {member.assigned_trainer_name && (
+                                    <div className="inline-cluster" style={{ marginTop: "8px" }}>
+                                        <span className="plan-pill">
+                                            {member.assigned_trainer_name}
+                                            {member.next_trainer_billing_date
+                                                ? ` · next ${new Date(member.next_trainer_billing_date).toLocaleDateString()}`
+                                                : ""}
+                                        </span>
+                                    </div>
+                                )}
+                                <p className="subline" style={{ marginTop: "8px" }}>
+                                    {member.assigned_trainer_name && member.assigned_trainer_at
+                                        ? `Trainer added ${new Date(member.assigned_trainer_at).toLocaleDateString()}`
+                                        : member.trainer_removed_at
+                                            ? `Trainer removed ${new Date(member.trainer_removed_at).toLocaleDateString()}`
+                                            : null}
+                                </p>
                                 <div className="meta-grid items-end">
                                     <div>
                                         <span className="mini-meta">Owed amount</span>
@@ -415,7 +493,7 @@ export const MobileMemberListView: FC = () => {
                                 {!editingMember && (
                                     <div>
                                         <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-1">Initial Payment (₹)</label>
-                                        <input type="number" className="w-full p-3 rounded-xl border border-brand-border bg-brand-bg text-sm" value={memberForm.initial_paid_amount} onChange={e => setMemberForm({...memberForm, initial_paid_amount: e.target.value})} />
+                                        <input type="number" min="0" max={!editingMember ? String(memberTotalCost) : undefined} step="0.01" className="w-full p-3 rounded-xl border border-brand-border bg-brand-bg text-sm" value={memberForm.initial_paid_amount} onChange={e => setMemberForm({...memberForm, initial_paid_amount: e.target.value})} />
                                     </div>
                                 )}
                                 <div className="flex gap-3 mt-4">
@@ -441,7 +519,7 @@ export const MobileMemberListView: FC = () => {
                             <form onSubmit={handlePaymentSubmit} className="flex flex-col gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-1">Amount (₹)</label>
-                                    <input required type="number" className="w-full p-3 rounded-xl border border-brand-border bg-brand-bg text-sm" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} />
+                                    <input required type="number" min="0" max={payingMember ? String(payingMember.total_owed) : undefined} step="0.01" className="w-full p-3 rounded-xl border border-brand-border bg-brand-bg text-sm" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-1">Method</label>

@@ -65,6 +65,7 @@ class MemberGym(Base):
     personal_training_cost: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     assigned_trainer_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("trainers.trainer_id"), nullable=True)
     assigned_trainer_plan_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("trainer_plans.plan_id"), nullable=True)
+    assigned_trainer_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     next_trainer_billing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     total_owed: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     paid: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -142,6 +143,18 @@ class TrainerPlan(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     trainer: Mapped["Trainer"] = Relationship("Trainer", back_populates="plans")
+
+
+class TrainerAssignment(Base):
+    __tablename__ = "trainer_assignments"
+
+    assignment_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    member_id: Mapped[int] = mapped_column(Integer, ForeignKey("members.member_id"), index=True)
+    gym_id: Mapped[int] = mapped_column(Integer, ForeignKey("gyms.gym_id"), index=True)
+    trainer_id: Mapped[int] = mapped_column(Integer, ForeignKey("trainers.trainer_id"), index=True)
+    trainer_plan_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("trainer_plans.plan_id"), nullable=True)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 class TempMember(Base):
     __tablename__ = "temp_member"

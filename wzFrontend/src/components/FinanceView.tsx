@@ -166,11 +166,22 @@ export const FinanceView: FC = () => {
     const handlePaySubmit = async (e: React.SubmitEvent) => {
         e.preventDefault();
         if (!payingMember) return;
+        const amount = parseFloat(payForm.amount);
+        if (amount < 0) {
+            alert("Payment amount cannot be negative");
+            return;
+        }
+        if (amount > payingMember.total_owed) {
+            alert(
+                `Payment amount exceeds the outstanding balance of ₹${payingMember.total_owed.toLocaleString()}`,
+            );
+            return;
+        }
         try {
             await api.post("/finances/pay", {
                 member_id: payingMember.member_id,
                 gym_id: activeGymId,
-                amount: parseFloat(payForm.amount),
+                amount,
                 payment_method: payForm.payment_method,
                 paid_by: payForm.payment_method,
                 remark: payForm.remark || null,
@@ -631,6 +642,11 @@ export const FinanceView: FC = () => {
                                     type="number"
                                     step="0.01"
                                     min="0"
+                                    max={
+                                        payingMember
+                                            ? String(payingMember.total_owed)
+                                            : undefined
+                                    }
                                     className="w-full px-3 py-2 rounded border border-brand-border bg-brand-bg"
                                     value={payForm.amount}
                                     onChange={(e) =>

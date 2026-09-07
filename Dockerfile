@@ -1,7 +1,8 @@
 # Build frontend
-FROM node:22-alpine AS frontend-build
+FROM node:22-slim AS frontend-build
 WORKDIR /app/wzFrontend
 COPY wzFrontend/package*.json ./
+COPY wzFrontend/.npmrc ./
 RUN npm ci
 COPY wzFrontend/ ./
 RUN npm run build

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 
@@ -48,15 +48,29 @@ class MemberUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
-class MemberResponse(MemberBase):
+class MemberResponse(BaseModel):
     member_id: int
+    name: str
+    email: EmailStr
+    phone_number: str
+    plan: str
+    plan_price: float = 0
+    has_personal_training: bool = False
+    personal_training_cost: float = 0
+    paid: bool = False
+    payment_method: str = "cash"
+    payment_remark: Optional[str] = None
     joining_date: datetime
     next_billing_date: Optional[datetime] = None
     total_owed: float
     is_active: bool
+    plan_id: Optional[int] = None
     assigned_trainer_id: Optional[int] = None
     assigned_trainer_name: Optional[str] = None
     assigned_trainer_plan_name: Optional[str] = None
     assigned_trainer_plan_id: Optional[int] = None
+    assigned_trainer_at: Optional[date] = None
+    trainer_removed_at: Optional[date] = None
+    next_trainer_billing_date: Optional[date] = None
     class Config:
         from_attributes = True

@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -25,7 +26,7 @@ load_dotenv()
 
 # Seed default plans for all existing gyms
 from sqlalchemy.orm import Session
-from database import SessionLocal
+from database import SessionLocal, run_schema_migrations
 from database.models import Gym, Plan
 
 DEFAULT_PLANS = [
@@ -50,12 +51,19 @@ def seed_default_plans():
                     db.add(plan)
         db.commit()
         db.close()
-    except Exception:
-        pass  # Table might not exist yet on first run
+    except Exception as exc:
+        print(f"[seed_default_plans] skipped: {exc}")
 
-seed_default_plans()
 
-app = FastAPI(title="WorkoutZone Backend")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    run_schema_migrations()
+    models.Base.metadata.create_all(bind=engine)
+    seed_default_plans()
+    yield
+
+
+app = FastAPI(title="WorkoutZone Backend", lifespan=lifespan)
 
 # Add Session Middleware
 is_production = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER") or os.getenv("PRODUCTION")
@@ -114,5 +122,4 @@ if FRONTEND_DIR.exists():
 
 if __name__ == "__main__":
     import uvicorn
-    models.Base.metadata.create_all(bind=engine)
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))

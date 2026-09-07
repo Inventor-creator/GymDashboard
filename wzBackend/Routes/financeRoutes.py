@@ -298,7 +298,16 @@ def record_payment(
     if not mg:
         raise HTTPException(status_code=404, detail="Membership not found")
 
-    mg.total_owed = max(0.0, float(mg.total_owed) - payment.amount)
+    total_owed = float(mg.total_owed)
+    if payment.amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be greater than zero")
+    if payment.amount > total_owed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payment amount (₹{payment.amount:.2f}) exceeds the outstanding balance (₹{total_owed:.2f})",
+        )
+
+    mg.total_owed = max(0.0, total_owed - payment.amount)
     if mg.total_owed <= 0:
         mg.paid = True
     else:
