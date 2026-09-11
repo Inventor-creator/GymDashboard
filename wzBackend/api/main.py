@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,7 +68,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="WorkoutZone Backend", lifespan=lifespan)
+app = FastAPI()
 
 # Add Session Middleware
 is_production = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER") or os.getenv("PRODUCTION")
